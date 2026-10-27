@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.2
+
+- Slideshow übernimmt den konfigurierten `image_dir` automatisch
+- `/homeassistant/www/...` wird automatisch auf den passenden `/local/...`-Pfad abgebildet
+- Slideshow übernimmt `rtsp_max_files` automatisch, begrenzt auf maximal 100 Bilder
+- verständliche Fehlermeldung, wenn `image_dir` nicht unter `/homeassistant/www` liegt
+- `rtsp_max_files` in der App-Konfiguration auf 1 bis 100 begrenzt
+
 ## 1.6.1
 
 - integrierte Bildanzeige **Slideshow Persondetection**
