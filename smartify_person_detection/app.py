@@ -1237,31 +1237,35 @@ def discovery():
     sound_switch_defs = [
         (
             "master",
-            "Erkennungston",
+            "Sound gesamt",
+            "switch.smartify_person_detection_sound",
             SOUND_MASTER_STATE_TOPIC,
             SOUND_MASTER_COMMAND_TOPIC,
             "mdi:volume-high",
         ),
         (
             "person",
-            "Ton Person",
+            "Person-Ton",
+            "switch.smartify_person_detection_person_sound",
             SOUND_PERSON_STATE_TOPIC,
             SOUND_PERSON_COMMAND_TOPIC,
             "mdi:account-volume-high",
         ),
         (
             "post",
-            "Ton Post",
+            "Post-Ton",
+            "switch.smartify_person_detection_post_sound",
             SOUND_POST_STATE_TOPIC,
             SOUND_POST_COMMAND_TOPIC,
             "mdi:email-fast",
         ),
     ]
 
-    for oid, name, state_topic, command_topic, icon in sound_switch_defs:
+    for oid, name, default_entity_id, state_topic, command_topic, icon in sound_switch_defs:
         config = {
             "name": name,
             "unique_id": f"smartify_person_detection_sound_{oid}",
+            "default_entity_id": default_entity_id,
             "state_topic": state_topic,
             "command_topic": command_topic,
             "payload_on": "ON",
@@ -1270,11 +1274,13 @@ def discovery():
             "icon": icon,
             "device": dev,
         }
-        c.publish(
+        info = c.publish(
             f"{DISC}/switch/smartify_person_detection/sound_{oid}/config",
             json.dumps(config),
             retain=True,
         )
+        info.wait_for_publish(timeout=3)
+        print(f"MQTT Discovery Sound-Switch bereit: {default_entity_id}")
 
     _save_entity_identity(new_identity)
 
@@ -2708,6 +2714,30 @@ DOOR_UI_HTML = r'''<!doctype html>
 </style></head><body><main>
 <h2 style="margin:0 0 12px">Smartify Person Detection – Einstellungen</h2>
 <div class="panel"><h3>System & Kamera</h3><div class="grid"><div><strong>Kamera:</strong> <code id="camera">-</code></div><div><strong>Kalibrierzugriff:</strong> <span id="uitime">-</span></div><div><strong>Pause:</strong> <span id="pause">-</span></div><div><strong>Ansicht:</strong> <span id="viewName">Normalbild</span></div></div></div>
+<div class="panel"><h3>Sound & Benachrichtigung</h3>
+<div class="hint">Mediaplayer werden direkt aus Home Assistant geladen. Sounddateien werden aus <code>/local/sounds/</code> vorgeschlagen. Die drei Stummschaltungen existieren zusätzlich als echte Home-Assistant-Switches.</div>
+<div class="grid">
+<label>Mediaplayer <input id="soundPlayer" list="soundPlayers" placeholder="media_player..."><datalist id="soundPlayers"></datalist></label>
+<label>Person-Ton <input id="personSound" list="soundFiles" placeholder="/local/sounds/person.mp3"></label>
+<label>Post-Ton <input id="postSound" list="soundFiles" placeholder="/local/sounds/post.mp3"><datalist id="soundFiles"></datalist></label>
+<label>Medientyp <input id="soundContentType" value="music"></label>
+<label>Basis-URL (optional) <input id="soundBaseUrl" placeholder="http://homeassistant.local:8123"></label>
+</div>
+<div class="row">
+<label><input id="soundMaster" type="checkbox"> Sound gesamt</label>
+<label><input id="soundPersonEnabled" type="checkbox"> Person-Ton aktiv</label>
+<label><input id="soundPostEnabled" type="checkbox"> Post-Ton aktiv</label>
+</div>
+<div class="row">
+<label><input id="soundTimeEnabled" type="checkbox"> Zeitbereich aktiv</label>
+<label>Von <input id="soundTimeStart" type="time" value="07:00"></label>
+<label>Bis <input id="soundTimeEnd" type="time" value="22:00"></label>
+<strong id="soundTimeNow"></strong>
+</div>
+<div class="hint">Außerhalb des Zeitbereichs laufen Erkennung, Zähler und Snapshots normal weiter; nur die Tonausgabe bleibt stumm.</div>
+<div class="row"><button id="soundSave">Sound-Einstellungen speichern</button><button id="personSoundTest" class="secondary">Person-Ton testen</button><button id="postSoundTest" class="secondary">Post-Ton testen</button></div>
+</div>
+
 <div class="row"><button id="reload">Aktuelles Bild laden</button><button id="edge" class="secondary">Tür-Kantenansicht</button><button id="gEdgeTop" class="secondary" style="display:none">Garage 1 Kantenansicht</button><button id="g2EdgeTop" class="secondary" style="display:none">Garage 2 Kantenansicht</button><button id="personToggle" class="secondary">Personen-Bildbereich</button></div><div id="msg" aria-live="polite"></div>
 <div id="stage"><img id="cam" alt="Aktuelles Kamerabild"><div id="fixedRoi" class="roi fixed"><span class="label">ZARGE</span><span class="handle nw" data-handle="nw"></span><span class="handle ne" data-handle="ne"></span><span class="handle sw" data-handle="sw"></span><span class="handle se" data-handle="se"></span><span class="handle rotate" data-handle="rotate"></span></div><div id="movingRoi" class="roi moving"><span class="label">TÜR</span><span class="handle nw" data-handle="nw"></span><span class="handle ne" data-handle="ne"></span><span class="handle sw" data-handle="sw"></span><span class="handle se" data-handle="se"></span><span class="handle rotate" data-handle="rotate"></span></div><div id="gFixedRoi" class="roi garageFixed" style="display:none"><span class="label">V-FEST</span><span class="handle nw" data-handle="nw"></span><span class="handle ne" data-handle="ne"></span><span class="handle sw" data-handle="sw"></span><span class="handle se" data-handle="se"></span><span class="handle rotate" data-handle="rotate"></span></div><div id="gMovingRoi" class="roi garageMoving" style="display:none"><span class="label">V-BEWEGT</span><span class="handle nw" data-handle="nw"></span><span class="handle ne" data-handle="ne"></span><span class="handle sw" data-handle="sw"></span><span class="handle se" data-handle="se"></span><span class="handle rotate" data-handle="rotate"></span></div><div id="g2FixedRoi" class="roi garage2Fixed" style="display:none"><span class="label">G2-FEST</span><span class="handle nw" data-handle="nw"></span><span class="handle ne" data-handle="ne"></span><span class="handle sw" data-handle="sw"></span><span class="handle se" data-handle="se"></span><span class="handle rotate" data-handle="rotate"></span></div><div id="g2MovingRoi" class="roi garage2Moving" style="display:none"><span class="label">G2-BEWEGT</span><span class="handle nw" data-handle="nw"></span><span class="handle ne" data-handle="ne"></span><span class="handle sw" data-handle="sw"></span><span class="handle se" data-handle="se"></span><span class="handle rotate" data-handle="rotate"></span></div><div id="personRoi" class="roi personArea" style="display:none"><span class="label">PERSON / POST</span><span class="handle nw" data-handle="nw"></span><span class="handle ne" data-handle="ne"></span><span class="handle sw" data-handle="sw"></span><span class="handle se" data-handle="se"></span></div></div>
 <div class="hint">ROI verschieben: im Rechteck ziehen · Größe: direkt an den Ecken ziehen; die Eckgriffe bleiben unsichtbar. Tür- und Vertikal-ROI können zusätzlich am kleinen Strich oberhalb um ±45° gedreht werden.</div>
@@ -2715,29 +2745,6 @@ DOOR_UI_HTML = r'''<!doctype html>
 <div id="garagePanel" class="panel" style="display:none"><h3>Vertikale Zusatzmessung</h3><div class="row"><label>Name <input id="verticalName"></label><label>Entity-ID <input id="verticalEntity"></label></div><div class="grid"><div><strong class="verticalFixedTxt">Fest-ROI:</strong> <code id="gFixedCoords">-</code></div><div><strong class="verticalMovingTxt">Bewegt-ROI:</strong> <code id="gMovingCoords">-</code></div><div><strong>Kalibriert:</strong> <span id="gCalibrated">-</span></div><div><strong>Status:</strong> <span id="gDoorState">-</span></div><div><strong>Verschiebung:</strong> <span id="gShift">-</span></div><div><strong>Kantenabstand:</strong> <span id="gGap">-</span></div><div><strong>Kantenqualität:</strong> <span id="gQuality">-</span></div><div><strong>Kanten-Tracking:</strong> <span id="gTracking">-</span></div><div><strong>Letzte Prüfung:</strong> <span id="gLast">-</span></div></div><div id="gError" class="statusline"></div><div class="row"><button id="gSave" class="secondary">Vertikale ROI speichern</button><button id="gCal">Geschlossen kalibrieren</button><button id="gCheck" class="secondary">Jetzt prüfen</button><button id="gEdge" class="secondary">Vertikale Kantenansicht</button></div></div>
 
 <div id="garage2Panel" class="panel" style="display:none"><h3>Vertikale Zusatzmessung – Garagentor 2</h3><div class="row"><label>Name <input id="vertical2Name"></label><label>Entity-ID <input id="vertical2Entity"></label></div><div class="grid"><div><strong class="vertical2FixedTxt">Fest-ROI:</strong> <code id="g2FixedCoords">-</code></div><div><strong class="vertical2MovingTxt">Bewegt-ROI:</strong> <code id="g2MovingCoords">-</code></div><div><strong>Kalibriert:</strong> <span id="g2Calibrated">-</span></div><div><strong>Status:</strong> <span id="g2DoorState">-</span></div><div><strong>Verschiebung:</strong> <span id="g2Shift">-</span></div><div><strong>Kantenabstand:</strong> <span id="g2Gap">-</span></div><div><strong>Kantenqualität:</strong> <span id="g2Quality">-</span></div><div><strong>Kanten-Tracking:</strong> <span id="g2Tracking">-</span></div><div><strong>Letzte Prüfung:</strong> <span id="g2Last">-</span></div></div><div id="g2Error" class="statusline"></div><div class="row"><button id="g2Save" class="secondary">Garage-2-ROI speichern</button><button id="g2Cal">Geschlossen kalibrieren</button><button id="g2Check" class="secondary">Jetzt prüfen</button><button id="g2Edge" class="secondary">Garage-2-Kantenansicht</button></div></div>
-
-<div class="panel"><h3>Erkennungston</h3>
-<div class="hint">Die Listen werden direkt aus Home Assistant und aus <code>/local/sounds/</code> erzeugt. Die drei Schalter werden zusaetzlich als Home-Assistant-Switches angelegt.</div>
-<div class="grid">
-<label>Mediaplayer <input id="soundPlayer" list="soundPlayers" placeholder="media_player..."><datalist id="soundPlayers"></datalist></label>
-<label>Ton Person <input id="personSound" list="soundFiles" placeholder="/local/sounds/person.mp3"></label>
-<label>Ton Post <input id="postSound" list="soundFiles" placeholder="/local/sounds/post.mp3"><datalist id="soundFiles"></datalist></label>
-<label>Medientyp <input id="soundContentType" value="music"></label>
-<label>Basis-URL (optional) <input id="soundBaseUrl" placeholder="http://homeassistant.local:8123"></label>
-</div>
-<div class="row">
-<label><input id="soundMaster" type="checkbox"> Sound gesamt</label>
-<label><input id="soundPersonEnabled" type="checkbox"> Person-Ton</label>
-<label><input id="soundPostEnabled" type="checkbox"> Post-Ton</label>
-</div>
-<div class="row">
-<label><input id="soundTimeEnabled" type="checkbox"> Zeitbereich aktiv</label>
-<label>Von <input id="soundTimeStart" type="time" value="07:00"></label>
-<label>Bis <input id="soundTimeEnd" type="time" value="22:00"></label>
-<span id="soundTimeNow"></span>
-</div>
-<div class="row"><button id="soundSave">Sound-Einstellungen speichern</button><button id="personSoundTest" class="secondary">Person-Ton testen</button><button id="postSoundTest" class="secondary">Post-Ton testen</button></div>
-</div>
 
 <div class="panel"><h3>Personen-/Postboten-Bildbereich</h3><div class="statusline">Nur dieser Bildbereich wird bei den drei Motion-JPEGs an YOLO übergeben. Er ersetzt das bisher fest codierte Fenster 25–75 % / 10–90 %.</div><div><strong class="personTxt">Bildbereich:</strong> <code id="personCoords">-</code></div><div class="row"><button id="personShow" class="secondary">Bildbereich einblenden</button><button id="personSave">Bildbereich speichern</button></div></div>
 </main><script>(()=>{
@@ -2771,7 +2778,7 @@ img.addEventListener('load',render);img.addEventListener('error',()=>{msg.textCo
 
 
 class DoorCalibrationHandler(BaseHTTPRequestHandler):
-    server_version = "SmartifyPersonDetectionUI/1.6.4"
+    server_version = "SmartifyPersonDetectionUI/1.6.5"
 
     def log_message(self, fmt, *args):
         print(
