@@ -47,6 +47,15 @@ Optional kann bei jeder neuen Erkennung ein Home-Assistant-Mediaplayer einen Ton
 Ein Post-Treffer ist zugleich eine Person; pro Ereignis wird trotzdem nur **ein** Ton
 ausgegeben, wobei der **Post-Ton Vorrang** hat.
 
+In der Ingress-Weboberfläche gibt es dafür eine eigene Sound-Konfiguration:
+
+- Vorschlagsliste mit allen vorhandenen `media_player.*`-Entities aus Home Assistant
+- Vorschlagsliste für Audiodateien aus `/homeassistant/www/sounds/`, also `/local/sounds/`
+- unterstützte Dateivorschläge: MP3, WAV, OGG, M4A, AAC und FLAC
+- getrennte Test-Tasten für Person- und Post-Ton
+- optionaler erlaubter Zeitbereich, z. B. `07:00` bis `22:00`
+- Zeitfenster über Mitternacht, z. B. `22:00` bis `07:00`, werden unterstützt
+
 Beispiel:
 
 - Mediaplayer: `media_player.wohnzimmer`
@@ -55,6 +64,19 @@ Beispiel:
 
 Für `/local/...` versucht die App automatisch `internal_url` bzw. `external_url` von
 Home Assistant zu verwenden. Bei Bedarf kann eine eigene HA-Basis-URL gesetzt werden.
+
+### Sound-Schalter in Home Assistant
+
+Über MQTT Discovery werden drei Schalter angelegt:
+
+- `switch.smartify_person_detection_erkennungston` bzw. die von Home Assistant erzeugte Entity für **Erkennungston**
+- **Ton Person**
+- **Ton Post**
+
+Damit kann der gesamte Sound oder Person/Post getrennt stummgeschaltet werden. Die Zustände
+werden in der App persistent gespeichert und bleiben nach einem Neustart erhalten. Die Schalter
+können direkt in Dashboards, Szenen oder Automationen verwendet werden. Der konfigurierte
+`sound_enabled`-Wert dient nur als Startwert für den globalen Schalter bei der ersten Einrichtung.
 
 ## Automatische Resets
 
@@ -69,4 +91,4 @@ gespeichert und erscheint damit als `Last-Modified`.
 
 ## Version
 
-Aktuell: **1.6.2**
+Aktuell: **1.6.3**
