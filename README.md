@@ -43,27 +43,27 @@ verwendet einen neutralen mittelgrauen Hintergrund.
 
 ## Erkennungston
 
-Optional kann bei jeder neuen Erkennung ein Home-Assistant-Mediaplayer einen Ton abspielen.
-Ein Post-Treffer ist zugleich eine Person; pro Ereignis wird trotzdem nur **ein** Ton
-ausgegeben, wobei der **Post-Ton Vorrang** hat.
+Die Sound-Konfiguration befindet sich auf der normalen **Konfiguration**-Seite der Home-Assistant-App,
+also dort, wo auch RTSP, MQTT, Tür- und weitere App-Optionen eingestellt werden.
 
-In der Ingress-Weboberfläche gibt es dafür eine eigene Sound-Konfiguration:
+Die Sound-Optionen stehen dort zusammenhängend in dieser Reihenfolge:
 
-- Vorschlagsliste mit allen vorhandenen `media_player.*`-Entities aus Home Assistant
-- Vorschlagsliste für Audiodateien aus `/homeassistant/www/sounds/`, also `/local/sounds/`
-- unterstützte Dateivorschläge: MP3, WAV, OGG, M4A, AAC und FLAC
-- getrennte Test-Tasten für Person- und Post-Ton
-- optionaler erlaubter Zeitbereich, z. B. `07:00` bis `22:00`
-- Zeitfenster über Mitternacht, z. B. `22:00` bis `07:00`, werden unterstützt
+- `sound_enabled` – Startzustand des globalen Sound-Schalters
+- `sound_media_player` – gewünschte `media_player.*`-Entity
+- `person_sound` – z. B. `/local/sounds/person.mp3`
+- `post_sound` – z. B. `/local/sounds/post.mp3`
+- `sound_time_window_enabled` – Zeitfenster aktivieren
+- `sound_time_start` / `sound_time_end`
+- `sound_media_content_type`
+- `sound_base_url` – optional
 
-Beispiel:
+Ein Post-Treffer ist zugleich eine Person; pro Ereignis wird trotzdem nur **ein** Ton ausgegeben,
+wobei der **Post-Ton Vorrang** hat. Zeitfenster über Mitternacht, z. B. `22:00` bis `07:00`,
+werden unterstützt.
 
-- Mediaplayer: `media_player.wohnzimmer`
-- Person: `/local/sounds/person.mp3`
-- Post: `/local/sounds/post.mp3`
-
-Für `/local/...` versucht die App automatisch `internal_url` bzw. `external_url` von
-Home Assistant zu verwenden. Bei Bedarf kann eine eigene HA-Basis-URL gesetzt werden.
+Die native Supervisor-App-Konfiguration kann keine dynamischen Vorschlagslisten aus den aktuell
+vorhandenen Home-Assistant-Entities oder aus dem Dateisystem erzeugen. Deshalb werden Mediaplayer
+und Sounddateien dort als Textfelder eingetragen. Die Beschreibungen enthalten passende Beispiele.
 
 ### Sound-Schalter in Home Assistant
 
@@ -73,10 +73,8 @@ Home Assistant zu verwenden. Bei Bedarf kann eine eigene HA-Basis-URL gesetzt we
 - `switch.smartify_person_detection_person_sound` – Person-Ton
 - `switch.smartify_person_detection_post_sound` – Post-Ton
 
-Damit kann der gesamte Sound oder Person/Post getrennt stummgeschaltet werden. Die Zustände
-werden in der App persistent gespeichert und bleiben nach einem Neustart erhalten. Die Schalter
-können direkt in Dashboards, Szenen oder Automationen verwendet werden. Der konfigurierte
-`sound_enabled`-Wert dient nur als Startwert für den globalen Schalter bei der ersten Einrichtung.
+Damit kann der gesamte Sound oder Person/Post getrennt stummgeschaltet werden. Die Schalterzustände
+werden persistent gespeichert und können direkt in Dashboards, Szenen oder Automationen verwendet werden.
 
 ## Automatische Resets
 
@@ -91,8 +89,10 @@ gespeichert und erscheint damit als `Last-Modified`.
 
 ## Weboberfläche
 
-Die Ingress-Seite heißt **Smartify Person Detection – Einstellungen**. Der Bereich **Sound & Benachrichtigung** steht direkt oben nach **System & Kamera**; Tür-, Garage- und ROI-Kalibrierung bleiben darunter getrennt.
+Die Ingress-Weboberfläche ist ausschließlich für **Bildbereiche und Kalibrierung** zuständig:
+Kamerabild, Personen-ROI, Haustür sowie optionale Garagentor-Kantenmessungen. Allgemeine
+App-Konfiguration wie Sound, RTSP und MQTT gehört nicht in dieses Menü.
 
 ## Version
 
-Aktuell: **1.6.5**
+Aktuell: **1.6.6**
