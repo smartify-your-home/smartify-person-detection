@@ -178,13 +178,13 @@ configuration:
     description: 'Startzustand des globalen Sound-Schalters bei der ersten Einrichtung. Danach kann der Schalter direkt in Home Assistant bedient werden. Standard: aus'
   sound_media_player:
     name: Mediaplayer für Erkennungston
-    description: Home-Assistant-Entity, z. B. media_player.wohnzimmer. Leer = keine Wiedergabe.
+    description: Home-Assistant-Entity manuell eintragen, z. B. media_player.wohnzimmer. Die native App-Konfiguration kann keine dynamische Entity-Liste anzeigen. Leer = keine Wiedergabe.
   person_sound:
     name: Ton für Person
-    description: Pfad oder URL für Person-Erkennung, z. B. /local/sounds/person.mp3.
+    description: Pfad oder URL für Person-Erkennung, z. B. /local/sounds/person.mp3. Dateien unter /homeassistant/www/sounds/ sind als /local/sounds/... erreichbar.
   post_sound:
     name: Ton für Post
-    description: Pfad oder URL für Post-Erkennung, z. B. /local/sounds/post.mp3.
+    description: Pfad oder URL für Post-Erkennung, z. B. /local/sounds/post.mp3. Dateien unter /homeassistant/www/sounds/ sind als /local/sounds/... erreichbar.
   sound_base_url:
     name: Home-Assistant Basis-URL für Sounds
     description: Optional, z. B. http://192.168.2.10:8123. Bei /local/... wird sonst automatisch internal_url/external_url von Home Assistant verwendet.
