@@ -1,0 +1,148 @@
+name: Smartify Person Detection
+version: 1.6.0
+slug: smartify_person_detection
+description: Lokale Personen- und Post-Erkennung mit YOLO11, RTSP-Ringpuffer, MQTT Discovery sowie optionaler Tür-/Garagentor-Kantenerkennung.
+arch:
+- amd64
+startup: application
+boot: auto
+init: false
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:account-eye
+panel_title: Smartify Person Detection
+panel_admin: true
+homeassistant_api: true
+map:
+- type: homeassistant_config
+  read_only: false
+options:
+  image_dir: /homeassistant/www/cam_pt2_motion
+  snapshot_dir: /homeassistant/www/smartify_person_detection
+  mqtt_host: core-mosquitto
+  mqtt_port: 1883
+  mqtt_username: ''
+  mqtt_password: ''
+  mqtt_topic_prefix: smartify_person_detection
+  mqtt_discovery_prefix: homeassistant
+  batch_size: 3
+  yellow_ratio_threshold: 0.18
+  person_confidence: 0.45
+  scan_interval_seconds: 2
+  partial_batch_timeout_seconds: 60
+  binary_sensor_on_seconds: 14000
+  person_sensor_on_seconds: 60
+  post_auto_reset: false
+  person_auto_reset: false
+  reset_binaries_at_midnight: false
+  rtsp_enabled: true
+  rtsp_url: rtsp://192.168.0.226:554/h264Preview_01_main
+  rtsp_username: ''
+  rtsp_password: ''
+  rtsp_transport: tcp
+  rtsp_buffer_fps: 4
+  rtsp_jpeg_quality: 92
+  rtsp_pre_seconds: 2.0
+  rtsp_post_seconds: 3.0
+  rtsp_analyze_fps: 2.0
+  rtsp_trigger_entities: binary_sensor.front_door_person,binary_sensor.front_door_fahrzeug
+  rtsp_trigger_poll_seconds: 0.5
+  rtsp_rearm_off_seconds: 10
+  rtsp_max_files: 100
+  rtsp_fallback_after_seconds: 15
+  door_use_rtsp: false
+  door_enabled: true
+  door_camera_entity: camera.cam_pt2_mainstream
+  door_check_interval_seconds: 60
+  door_pause_after_motion_seconds: 20
+  door_open_shift_pixels: 3.0
+  door_close_shift_pixels: 1.5
+  door_calibration_ui_minutes: 15
+  door_edge_track_window_pixels: 4.0
+  door_edge_min_quality: 1.2
+  door_edge_min_template_corr: 0.45
+  door_name: Haustür
+  door_entity_id: binary_sensor.haustuer
+  vertical_enabled: false
+  vertical_name: Garagentor
+  vertical_entity_id: binary_sensor.garagentor
+  vertical_open_shift_pixels: 3.0
+  vertical_close_shift_pixels: 1.5
+  post_entity_id: binary_sensor.smartify_person_detection_post
+  person_entity_id: binary_sensor.smartify_person_detection_person
+  sound_enabled: false
+  sound_media_player: ''
+  person_sound: ''
+  post_sound: ''
+  sound_base_url: ''
+  sound_media_content_type: music
+  vertical2_enabled: false
+  vertical2_name: Garagentor 2
+  vertical2_entity_id: binary_sensor.garagentor_2
+  vertical2_open_shift_pixels: 3.0
+  vertical2_close_shift_pixels: 1.5
+schema:
+  image_dir: str
+  snapshot_dir: str
+  mqtt_host: str
+  mqtt_port: port
+  mqtt_username: str
+  mqtt_password: password
+  mqtt_topic_prefix: str
+  mqtt_discovery_prefix: str
+  batch_size: int
+  yellow_ratio_threshold: float
+  person_confidence: float
+  scan_interval_seconds: float
+  partial_batch_timeout_seconds: float
+  binary_sensor_on_seconds: int
+  person_sensor_on_seconds: int
+  post_auto_reset: bool
+  person_auto_reset: bool
+  reset_binaries_at_midnight: bool
+  rtsp_enabled: bool
+  rtsp_url: str
+  rtsp_username: str
+  rtsp_password: password
+  rtsp_transport: list(tcp|udp)
+  rtsp_buffer_fps: float
+  rtsp_jpeg_quality: int(50,100)
+  rtsp_pre_seconds: float
+  rtsp_post_seconds: float
+  rtsp_analyze_fps: float
+  rtsp_trigger_entities: str
+  rtsp_trigger_poll_seconds: float
+  rtsp_rearm_off_seconds: float
+  rtsp_max_files: int
+  rtsp_fallback_after_seconds: float
+  door_use_rtsp: bool
+  door_enabled: bool
+  door_camera_entity: str
+  door_check_interval_seconds: int
+  door_pause_after_motion_seconds: int
+  door_open_shift_pixels: float
+  door_close_shift_pixels: float
+  door_calibration_ui_minutes: int
+  door_edge_track_window_pixels: float
+  door_edge_min_quality: float
+  door_edge_min_template_corr: float
+  door_name: str
+  door_entity_id: str
+  vertical_enabled: bool
+  vertical_name: str
+  vertical_entity_id: str
+  vertical_open_shift_pixels: float
+  vertical_close_shift_pixels: float
+  post_entity_id: str
+  person_entity_id: str
+  sound_enabled: bool
+  sound_media_player: str
+  person_sound: str
+  post_sound: str
+  sound_base_url: str
+  sound_media_content_type: str
+  vertical2_enabled: bool
+  vertical2_name: str
+  vertical2_entity_id: str
+  vertical2_open_shift_pixels: float
+  vertical2_close_shift_pixels: float

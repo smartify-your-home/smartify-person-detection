@@ -1,0 +1,193 @@
+configuration:
+  image_dir:
+    name: Motion image directory
+    description: 'Directory containing camera motion JPEGs. Default: /homeassistant/www/cam_pt2_motion'
+  snapshot_dir:
+    name: Snapshot directory
+    description: 'Directory for postbote_latest.jpg and person_latest.jpg. Default: /homeassistant/www/postbote_snapshots'
+  mqtt_host:
+    name: MQTT host
+    description: 'MQTT broker. Default: core-mosquitto'
+  mqtt_port:
+    name: MQTT port
+    description: 'MQTT port. Default: 1883'
+  mqtt_username:
+    name: MQTT username
+    description: 'Optional MQTT username. Default: empty'
+  mqtt_password:
+    name: MQTT password
+    description: 'Optional MQTT password. Default: empty'
+  mqtt_topic_prefix:
+    name: MQTT topic prefix
+    description: 'Base topic for this app. Default: postbote'
+  mqtt_discovery_prefix:
+    name: MQTT discovery prefix
+    description: 'Home Assistant MQTT discovery prefix. Default: homeassistant'
+  batch_size:
+    name: Batch size
+    description: 'Number of new images evaluated per batch. Default: 3'
+  yellow_ratio_threshold:
+    name: Yellow ratio threshold
+    description: 'Minimum yellow pixel ratio in the torso region. Default: 0.18'
+  person_confidence:
+    name: Person confidence
+    description: 'Normal minimum YOLO person confidence. Default: 0.45'
+  scan_interval_seconds:
+    name: Folder scan interval
+    description: 'Seconds between motion-folder scans. Default: 2 s'
+  partial_batch_timeout_seconds:
+    name: Partial batch timeout
+    description: 'If fewer than the configured batch size are stable, evaluate them after this wait time. Permanently unstable files are skipped after the same timeout. Default: 60 s'
+  binary_sensor_on_seconds:
+    name: Post ON duration
+    description: 'Seconds before the post binary auto-resets. 0 disables the timer. Default: 14000 s'
+  person_sensor_on_seconds:
+    name: Person ON duration
+    description: 'Seconds before the person binary auto-resets. 0 disables the timer. Default: 60 s'
+  post_auto_reset:
+    name: Post auto reset
+    description: 'Enable timer-based reset for post. Default: on'
+  person_auto_reset:
+    name: Person auto reset
+    description: 'Enable timer-based reset for person. Default: on'
+  reset_binaries_at_midnight:
+    name: Reset binaries at midnight
+    description: 'Set post and person binaries to OFF at day change. Default: on'
+  rtsp_enabled:
+    name: Enable RTSP mode
+    description: 'Use the direct RTSP ring buffer for event images. Default: on'
+  rtsp_url:
+    name: RTSP URL
+    description: 'Direct camera RTSP address. Default: rtsp://192.168.0.226:554/h264Preview_01_main'
+  rtsp_username:
+    name: RTSP username
+    description: 'Optional RTSP username. Default: empty'
+  rtsp_password:
+    name: RTSP password
+    description: 'Optional RTSP password. Default: empty'
+  rtsp_transport:
+    name: RTSP transport
+    description: 'Stream transport. Default: tcp'
+  rtsp_buffer_fps:
+    name: RTSP buffer FPS
+    description: 'Frames per second kept in the ring buffer. Default: 4'
+  rtsp_jpeg_quality:
+    name: RTSP JPEG quality
+    description: 'JPEG quality of buffered frames. Default: 92'
+  rtsp_pre_seconds:
+    name: RTSP pre-roll
+    description: 'Seconds before a trigger to analyze. Default: 2.0 s'
+  rtsp_post_seconds:
+    name: RTSP post-roll
+    description: 'Seconds after a trigger to analyze. Default: 3.0 s'
+  rtsp_analyze_fps:
+    name: RTSP analysis FPS
+    description: 'Frames per second selected from the event window. Default: 2.0'
+  rtsp_trigger_entities:
+    name: RTSP trigger entities
+    description: Comma-separated HA binary sensors whose off->on transition triggers an RTSP event.
+  rtsp_trigger_poll_seconds:
+    name: RTSP trigger polling
+    description: 'Polling interval for trigger entities. Default: 0.5 s'
+  rtsp_rearm_off_seconds:
+    name: RTSP re-arm delay
+    description: 'After an RTSP event, re-arm only after all trigger entities have continuously remained OFF for this duration. Default: 10 s'
+  rtsp_max_files:
+    name: RTSP maximum files
+    description: 'Maximum rotating rtsp_*.jpg files in the motion folder. Default: 60'
+  rtsp_fallback_after_seconds:
+    name: RTSP fallback after
+    description: 'If RTSP stays unavailable this long, automatically use the robust folder batch mode. Default: 15 s'
+  door_use_rtsp:
+    name: Door check from RTSP
+    description: 'Prefer the latest RTSP frame for door/garage checks; camera_proxy remains the fallback. Default: off'
+  door_enabled:
+    name: Door detection enabled
+    description: 'Enable horizontal door edge measurement. Default: on'
+  door_camera_entity:
+    name: Camera entity
+    description: 'Camera used for door and garage checks. Default: camera.cam_pt2_mainstream'
+  door_check_interval_seconds:
+    name: Door check interval
+    description: 'Seconds between camera checks. Internal minimum 5 s. Default: 60 s'
+  door_pause_after_motion_seconds:
+    name: Pause after motion
+    description: 'Pause door/garage checks after new motion images. Default: 20 s'
+  door_open_shift_pixels:
+    name: Door open threshold
+    description: 'Shift from the closed reference that indicates OPEN. Default: 3.0 px'
+  door_close_shift_pixels:
+    name: Door close threshold
+    description: 'Shift up to which CLOSED is accepted. Default: 1.5 px'
+  door_calibration_ui_minutes:
+    name: Calibration UI access duration
+    description: 'Duration of calibration UI access. Default: 15 min'
+  door_edge_track_window_pixels:
+    name: Tracking search window
+    description: 'Local search window around the calibrated edge. Default: ±4.0 px'
+  door_edge_min_quality:
+    name: Minimum edge quality
+    description: 'Minimum quality for valid edge tracking. Default: 1.2'
+  door_edge_min_template_corr:
+    name: Minimum profile correlation
+    description: 'Minimum edge-profile similarity to calibration. Default: 0.45'
+  door_name:
+    name: Door name
+    description: 'Display name of the door entity. Default: Haustür'
+  door_entity_id:
+    name: Door entity ID
+    description: 'Requested entity ID. Default: binary_sensor.haustuer'
+  vertical_enabled:
+    name: Garage door 1 enabled
+    description: 'Enable the first vertical edge measurement. Default: off'
+  vertical_name:
+    name: Garage door 1 name
+    description: 'Display name. Default: Garagentor'
+  vertical_entity_id:
+    name: Garage door 1 entity ID
+    description: 'Requested entity ID. Default: binary_sensor.garagentor'
+  vertical_open_shift_pixels:
+    name: Garage door 1 open threshold
+    description: 'Vertical shift that indicates OPEN. Default: 3.0 px'
+  vertical_close_shift_pixels:
+    name: Garage door 1 close threshold
+    description: 'Vertical shift up to which CLOSED is accepted. Default: 1.5 px'
+  post_entity_id:
+    name: Post entity ID
+    description: 'Requested post binary entity ID. Default: binary_sensor.postboten_erkennung_post_war_da'
+  person_entity_id:
+    name: Person entity ID
+    description: 'Requested person binary entity ID. Default: binary_sensor.postboten_erkennung_person_erkannt'
+  vertical2_enabled:
+    name: Garage door 2 enabled
+    description: 'Enable the second vertical edge measurement. Default: off'
+  vertical2_name:
+    name: Garage door 2 name
+    description: 'Display name. Default: Garagentor 2'
+  vertical2_entity_id:
+    name: Garage door 2 entity ID
+    description: 'Requested entity ID. Default: binary_sensor.garagentor_2'
+  vertical2_open_shift_pixels:
+    name: Garage door 2 open threshold
+    description: 'Vertical shift that indicates OPEN. Default: 3.0 px'
+  vertical2_close_shift_pixels:
+    name: Garage door 2 close threshold
+    description: 'Vertical shift up to which CLOSED is accepted. Default: 1.5 px'
+  sound_enabled:
+    name: Detection sound enabled
+    description: 'Play exactly one sound for each new detection. Post takes precedence over person. Default: off'
+  sound_media_player:
+    name: Detection sound media player
+    description: Home Assistant media_player entity, e.g. media_player.living_room.
+  person_sound:
+    name: Person sound
+    description: Path or URL for person detections, e.g. /local/sounds/person.mp3.
+  post_sound:
+    name: Post sound
+    description: Path or URL for post detections, e.g. /local/sounds/post.mp3.
+  sound_base_url:
+    name: Home Assistant sound base URL
+    description: Optional base URL. /local/... otherwise uses Home Assistant internal_url/external_url automatically.
+  sound_media_content_type:
+    name: Sound media content type
+    description: 'media_content_type passed to media_player.play_media. Default: music'
