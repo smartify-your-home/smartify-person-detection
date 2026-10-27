@@ -92,6 +92,12 @@ PERSON_SOUND = str(g("person_sound", "")).strip()
 POST_SOUND = str(g("post_sound", "")).strip()
 SOUND_BASE_URL = str(g("sound_base_url", "")).strip().rstrip("/")
 SOUND_MEDIA_CONTENT_TYPE = str(g("sound_media_content_type", "music")).strip() or "music"
+SOUND_TIME_WINDOW_ENABLED = bool(g("sound_time_window_enabled", False))
+SOUND_TIME_START = str(g("sound_time_start", "07:00")).strip() or "07:00"
+SOUND_TIME_END = str(g("sound_time_end", "22:00")).strip() or "22:00"
+SOUND_SETTINGS_FILE = Path("/data/sound_settings.json")
+SOUND_SWITCH_STATE_FILE = Path("/data/sound_switches.json")
+SOUND_FILES_DIR = Path("/homeassistant/www/sounds")
 
 # Haustuer-Erkennung
 DOOR_ENABLED = bool(g("door_enabled", True))
@@ -148,6 +154,101 @@ SUPERVISOR_TOKEN = os.environ.get("SUPERVISOR_TOKEN", "")
 
 _HA_BASE_URL_CACHE = None
 _HA_BASE_URL_LOCK = threading.Lock()
+sound_settings_lock = threading.Lock()
+sound_switch_lock = threading.Lock()
+
+
+def _valid_hhmm(value, fallback):
+    value = str(value or "").strip()
+    try:
+        datetime.strptime(value, "%H:%M")
+        return value
+    except Exception:
+        print(f"Sound: ungueltige Uhrzeit '{value}', verwende {fallback}.")
+        return fallback
+
+
+def _load_sound_settings():
+    defaults = {
+        "enabled": bool(SOUND_ENABLED),
+        "media_player": SOUND_MEDIA_PLAYER,
+        "person_sound": PERSON_SOUND,
+        "post_sound": POST_SOUND,
+        "base_url": SOUND_BASE_URL,
+        "media_content_type": SOUND_MEDIA_CONTENT_TYPE,
+        "time_window_enabled": bool(SOUND_TIME_WINDOW_ENABLED),
+        "time_start": _valid_hhmm(SOUND_TIME_START, "07:00"),
+        "time_end": _valid_hhmm(SOUND_TIME_END, "22:00"),
+    }
+    try:
+        data = json.loads(SOUND_SETTINGS_FILE.read_text(encoding="utf-8"))
+        if isinstance(data, dict):
+            defaults.update({
+                key: data[key]
+                for key in defaults
+                if key in data
+            })
+    except Exception:
+        pass
+
+    defaults["enabled"] = bool(defaults.get("enabled", False))
+    defaults["media_player"] = str(defaults.get("media_player", "")).strip()
+    defaults["person_sound"] = str(defaults.get("person_sound", "")).strip()
+    defaults["post_sound"] = str(defaults.get("post_sound", "")).strip()
+    defaults["base_url"] = str(defaults.get("base_url", "")).strip().rstrip("/")
+    defaults["media_content_type"] = str(defaults.get("media_content_type", "music")).strip() or "music"
+    defaults["time_window_enabled"] = bool(defaults.get("time_window_enabled", False))
+    defaults["time_start"] = _valid_hhmm(defaults.get("time_start"), "07:00")
+    defaults["time_end"] = _valid_hhmm(defaults.get("time_end"), "22:00")
+    return defaults
+
+
+sound_settings = _load_sound_settings()
+
+
+def _save_sound_settings():
+    with sound_settings_lock:
+        SOUND_SETTINGS_FILE.write_text(
+            json.dumps(sound_settings, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+
+
+def _load_sound_switches():
+    defaults = {
+        "master": bool(sound_settings.get("enabled", SOUND_ENABLED)),
+        "person": True,
+        "post": True,
+        "config_sound_enabled": bool(SOUND_ENABLED),
+    }
+    try:
+        data = json.loads(SOUND_SWITCH_STATE_FILE.read_text(encoding="utf-8"))
+        if isinstance(data, dict):
+            # Wenn der Benutzer den Startwert in den App-Optionen geaendert hat,
+            # soll diese bewusste Aenderung beim naechsten Start den Master setzen.
+            old_config = bool(data.get("config_sound_enabled", SOUND_ENABLED))
+            defaults["person"] = bool(data.get("person", True))
+            defaults["post"] = bool(data.get("post", True))
+            defaults["master"] = (
+                bool(SOUND_ENABLED)
+                if old_config != bool(SOUND_ENABLED)
+                else bool(data.get("master", defaults["master"]))
+            )
+    except Exception:
+        pass
+    defaults["config_sound_enabled"] = bool(SOUND_ENABLED)
+    return defaults
+
+
+sound_switches = _load_sound_switches()
+
+
+def _save_sound_switches():
+    with sound_switch_lock:
+        SOUND_SWITCH_STATE_FILE.write_text(
+            json.dumps(sound_switches, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
 
 
 def _ha_api_request(path, payload=None, timeout=10):
@@ -185,12 +286,17 @@ def _ha_api_request(path, payload=None, timeout=10):
         return raw.decode("utf-8", errors="replace")
 
 
-def _homeassistant_base_url():
-    """LAN-taugliche HA-Basis-URL für /local/-Sounds bestimmen."""
+def _homeassistant_base_url(settings=None):
+    """LAN-taugliche HA-Basis-URL fuer /local/-Sounds bestimmen."""
     global _HA_BASE_URL_CACHE
 
-    if SOUND_BASE_URL:
-        return SOUND_BASE_URL
+    if settings is None:
+        with sound_settings_lock:
+            settings = dict(sound_settings)
+
+    configured = str(settings.get("base_url", "")).strip().rstrip("/")
+    if configured:
+        return configured
 
     with _HA_BASE_URL_LOCK:
         if _HA_BASE_URL_CACHE is not None:
@@ -212,45 +318,221 @@ def _homeassistant_base_url():
         return base
 
 
-def _resolve_sound_content_id(value):
+def _resolve_sound_content_id(value, settings=None):
     value = str(value or "").strip()
     if not value:
         return ""
 
-    # /local/... ist für Browser relativ. Viele physische Mediaplayer
-    # benötigen eine absolute URL; dafür wird bevorzugt HA internal_url genutzt.
     if value.startswith("/local/"):
-        base = _homeassistant_base_url()
+        base = _homeassistant_base_url(settings=settings)
         if base:
             return base + value
 
     return value
 
 
-def play_detection_sound(kind):
-    """Genau einen konfigurierten Ton für 'person' oder 'post' abspielen."""
-    if not SOUND_ENABLED:
+def _minutes_since_midnight(hhmm):
+    dt = datetime.strptime(hhmm, "%H:%M")
+    return dt.hour * 60 + dt.minute
+
+
+def sound_time_allowed(settings=None, now=None):
+    if settings is None:
+        with sound_settings_lock:
+            settings = dict(sound_settings)
+
+    if not bool(settings.get("time_window_enabled", False)):
+        return True
+
+    start = _minutes_since_midnight(
+        _valid_hhmm(settings.get("time_start"), "07:00")
+    )
+    end = _minutes_since_midnight(
+        _valid_hhmm(settings.get("time_end"), "22:00")
+    )
+    current_dt = now or datetime.now().astimezone()
+    current = current_dt.hour * 60 + current_dt.minute
+
+    # Gleiche Uhrzeit bedeutet ganzer Tag, damit eine versehentliche
+    # 00:00-00:00-Konfiguration nicht alles stumm schaltet.
+    if start == end:
+        return True
+    if start < end:
+        return start <= current < end
+    # Zeitfenster ueber Mitternacht, z. B. 22:00-07:00.
+    return current >= start or current < end
+
+
+def _sound_switch_topic(kind):
+    return {
+        "master": SOUND_MASTER_STATE_TOPIC,
+        "person": SOUND_PERSON_STATE_TOPIC,
+        "post": SOUND_POST_STATE_TOPIC,
+    }[kind]
+
+
+def publish_sound_switch_states():
+    client = globals().get("c")
+    if client is None:
+        return
+    with sound_switch_lock:
+        current = dict(sound_switches)
+    for kind in ("master", "person", "post"):
+        client.publish(
+            _sound_switch_topic(kind),
+            "ON" if current.get(kind, False) else "OFF",
+            retain=True,
+        )
+
+
+def set_sound_switch(kind, enabled, publish=True):
+    if kind not in ("master", "person", "post"):
+        raise ValueError("Unbekannter Sound-Schalter.")
+    with sound_switch_lock:
+        sound_switches[kind] = bool(enabled)
+    _save_sound_switches()
+    if publish:
+        client = globals().get("c")
+        if client is not None:
+            client.publish(
+                _sound_switch_topic(kind),
+                "ON" if bool(enabled) else "OFF",
+                retain=True,
+            )
+    print(f"Sound-Schalter {kind}: {'EIN' if enabled else 'AUS'}")
+
+
+def update_sound_settings(data):
+    global _HA_BASE_URL_CACHE
+
+    if not isinstance(data, dict):
+        raise ValueError("Ungueltige Sound-Einstellungen.")
+
+    media_player = str(data.get("media_player", "")).strip()
+    if media_player and not re.fullmatch(r"media_player\.[a-z0-9_]+", media_player):
+        raise ValueError("Mediaplayer muss eine media_player.* Entity sein.")
+
+    with sound_settings_lock:
+        sound_settings["media_player"] = media_player
+        sound_settings["person_sound"] = str(data.get("person_sound", "")).strip()
+        sound_settings["post_sound"] = str(data.get("post_sound", "")).strip()
+        sound_settings["base_url"] = str(data.get("base_url", "")).strip().rstrip("/")
+        sound_settings["media_content_type"] = (
+            str(data.get("media_content_type", "music")).strip() or "music"
+        )
+        sound_settings["time_window_enabled"] = bool(
+            data.get("time_window_enabled", False)
+        )
+        sound_settings["time_start"] = _valid_hhmm(
+            data.get("time_start"), "07:00"
+        )
+        sound_settings["time_end"] = _valid_hhmm(
+            data.get("time_end"), "22:00"
+        )
+    _save_sound_settings()
+    with _HA_BASE_URL_LOCK:
+        _HA_BASE_URL_CACHE = None
+
+
+def sound_options_payload():
+    media_players = []
+    try:
+        states = _ha_api_request("/states", timeout=10)
+        if isinstance(states, list):
+            for item in states:
+                entity_id = str(item.get("entity_id", ""))
+                if not entity_id.startswith("media_player."):
+                    continue
+                attrs = item.get("attributes") or {}
+                media_players.append({
+                    "entity_id": entity_id,
+                    "name": str(attrs.get("friendly_name") or entity_id),
+                })
+    except Exception as exc:
+        print(f"Sound: Mediaplayer-Liste konnte nicht geladen werden: {exc}")
+
+    media_players.sort(key=lambda x: (x["name"].lower(), x["entity_id"]))
+
+    sound_files = []
+    try:
+        if SOUND_FILES_DIR.exists():
+            allowed = {".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac"}
+            for path in SOUND_FILES_DIR.rglob("*"):
+                if not path.is_file() or path.suffix.lower() not in allowed:
+                    continue
+                rel = path.relative_to(SOUND_FILES_DIR).as_posix()
+                sound_files.append("/local/sounds/" + quote(rel, safe="/"))
+    except Exception as exc:
+        print(f"Sound: Sounddatei-Liste konnte nicht geladen werden: {exc}")
+
+    sound_files.sort(key=str.lower)
+
+    with sound_settings_lock:
+        settings = dict(sound_settings)
+    with sound_switch_lock:
+        switches = {
+            "master": bool(sound_switches.get("master", False)),
+            "person": bool(sound_switches.get("person", True)),
+            "post": bool(sound_switches.get("post", True)),
+        }
+
+    return {
+        "settings": settings,
+        "switches": switches,
+        "media_players": media_players,
+        "sound_files": sound_files,
+        "time_allowed_now": sound_time_allowed(settings=settings),
+    }
+
+
+def play_detection_sound(kind, force=False):
+    """Konfigurierten Ton fuer 'person' oder 'post' abspielen."""
+    if kind not in ("person", "post"):
         return
 
-    if not SOUND_MEDIA_PLAYER:
-        print("Sound: aktiviert, aber kein Mediaplayer konfiguriert.")
+    with sound_settings_lock:
+        settings = dict(sound_settings)
+    with sound_switch_lock:
+        switches = dict(sound_switches)
+
+    if not force:
+        if not switches.get("master", False):
+            return
+        if not switches.get(kind, True):
+            return
+        if not sound_time_allowed(settings=settings):
+            print(
+                f"Sound: {kind} erkannt, aber ausserhalb des erlaubten Zeitfensters "
+                f"{settings.get('time_start')}-{settings.get('time_end')}."
+            )
+            return
+
+    media_player = str(settings.get("media_player", "")).strip()
+    if not media_player:
+        print("Sound: kein Mediaplayer konfiguriert.")
         return
 
-    if not SOUND_MEDIA_PLAYER.startswith("media_player."):
-        print(f"Sound: ungültige Mediaplayer-Entity: {SOUND_MEDIA_PLAYER}")
+    if not media_player.startswith("media_player."):
+        print(f"Sound: ungueltige Mediaplayer-Entity: {media_player}")
         return
 
-    raw_sound = POST_SOUND if kind == "post" else PERSON_SOUND
-    sound = _resolve_sound_content_id(raw_sound)
+    raw_sound = (
+        settings.get("post_sound", "")
+        if kind == "post"
+        else settings.get("person_sound", "")
+    )
+    sound = _resolve_sound_content_id(raw_sound, settings=settings)
 
     if not sound:
-        print(f"Sound: für {kind} ist kein Ton konfiguriert.")
+        print(f"Sound: fuer {kind} ist kein Ton konfiguriert.")
         return
 
     payload = {
-        "entity_id": SOUND_MEDIA_PLAYER,
+        "entity_id": media_player,
         "media_content_id": sound,
-        "media_content_type": SOUND_MEDIA_CONTENT_TYPE,
+        "media_content_type": str(
+            settings.get("media_content_type", "music")
+        ).strip() or "music",
     }
 
     try:
@@ -259,12 +541,10 @@ def play_detection_sound(kind):
             payload=payload,
             timeout=10,
         )
-        print(
-            f"Sound: {kind} über {SOUND_MEDIA_PLAYER} abgespielt: {sound}"
-        )
+        print(f"Sound: {kind} ueber {media_player} abgespielt: {sound}")
     except Exception as exc:
         print(
-            f"Sound: Wiedergabe für {kind} über {SOUND_MEDIA_PLAYER} fehlgeschlagen: "
+            f"Sound: Wiedergabe fuer {kind} ueber {media_player} fehlgeschlagen: "
             f"{type(exc).__name__}: {exc}"
         )
 
@@ -296,6 +576,13 @@ vertical2_attributes_topic = f"{PREFIX}/vertical2/attributes"
 
 RESET_TOPIC = f"{PREFIX}/reset"
 POST_RESET_TOPIC = f"{PREFIX}/post_reset"
+
+SOUND_MASTER_STATE_TOPIC = f"{PREFIX}/sound/master/state"
+SOUND_MASTER_COMMAND_TOPIC = f"{PREFIX}/sound/master/set"
+SOUND_PERSON_STATE_TOPIC = f"{PREFIX}/sound/person/state"
+SOUND_PERSON_COMMAND_TOPIC = f"{PREFIX}/sound/person/set"
+SOUND_POST_STATE_TOPIC = f"{PREFIX}/sound/post/state"
+SOUND_POST_COMMAND_TOPIC = f"{PREFIX}/sound/post/set"
 
 
 # ---------------------------------------------------------
@@ -946,6 +1233,48 @@ def discovery():
         )
     else:
         c.publish(f"{DISC}/binary_sensor/smartify_person_detection/vertical2/config", "", retain=True)
+
+    sound_switch_defs = [
+        (
+            "master",
+            "Erkennungston",
+            SOUND_MASTER_STATE_TOPIC,
+            SOUND_MASTER_COMMAND_TOPIC,
+            "mdi:volume-high",
+        ),
+        (
+            "person",
+            "Ton Person",
+            SOUND_PERSON_STATE_TOPIC,
+            SOUND_PERSON_COMMAND_TOPIC,
+            "mdi:account-volume-high",
+        ),
+        (
+            "post",
+            "Ton Post",
+            SOUND_POST_STATE_TOPIC,
+            SOUND_POST_COMMAND_TOPIC,
+            "mdi:email-fast",
+        ),
+    ]
+
+    for oid, name, state_topic, command_topic, icon in sound_switch_defs:
+        config = {
+            "name": name,
+            "unique_id": f"smartify_person_detection_sound_{oid}",
+            "state_topic": state_topic,
+            "command_topic": command_topic,
+            "payload_on": "ON",
+            "payload_off": "OFF",
+            "availability_topic": avail,
+            "icon": icon,
+            "device": dev,
+        }
+        c.publish(
+            f"{DISC}/switch/smartify_person_detection/sound_{oid}/config",
+            json.dumps(config),
+            retain=True,
+        )
 
     _save_entity_identity(new_identity)
 
@@ -2386,6 +2715,29 @@ DOOR_UI_HTML = r'''<!doctype html>
 
 <div id="garage2Panel" class="panel" style="display:none"><h3>Vertikale Zusatzmessung – Garagentor 2</h3><div class="row"><label>Name <input id="vertical2Name"></label><label>Entity-ID <input id="vertical2Entity"></label></div><div class="grid"><div><strong class="vertical2FixedTxt">Fest-ROI:</strong> <code id="g2FixedCoords">-</code></div><div><strong class="vertical2MovingTxt">Bewegt-ROI:</strong> <code id="g2MovingCoords">-</code></div><div><strong>Kalibriert:</strong> <span id="g2Calibrated">-</span></div><div><strong>Status:</strong> <span id="g2DoorState">-</span></div><div><strong>Verschiebung:</strong> <span id="g2Shift">-</span></div><div><strong>Kantenabstand:</strong> <span id="g2Gap">-</span></div><div><strong>Kantenqualität:</strong> <span id="g2Quality">-</span></div><div><strong>Kanten-Tracking:</strong> <span id="g2Tracking">-</span></div><div><strong>Letzte Prüfung:</strong> <span id="g2Last">-</span></div></div><div id="g2Error" class="statusline"></div><div class="row"><button id="g2Save" class="secondary">Garage-2-ROI speichern</button><button id="g2Cal">Geschlossen kalibrieren</button><button id="g2Check" class="secondary">Jetzt prüfen</button><button id="g2Edge" class="secondary">Garage-2-Kantenansicht</button></div></div>
 
+<div class="panel"><h3>Erkennungston</h3>
+<div class="hint">Die Listen werden direkt aus Home Assistant und aus <code>/local/sounds/</code> erzeugt. Die drei Schalter werden zusaetzlich als Home-Assistant-Switches angelegt.</div>
+<div class="grid">
+<label>Mediaplayer <input id="soundPlayer" list="soundPlayers" placeholder="media_player..."><datalist id="soundPlayers"></datalist></label>
+<label>Ton Person <input id="personSound" list="soundFiles" placeholder="/local/sounds/person.mp3"></label>
+<label>Ton Post <input id="postSound" list="soundFiles" placeholder="/local/sounds/post.mp3"><datalist id="soundFiles"></datalist></label>
+<label>Medientyp <input id="soundContentType" value="music"></label>
+<label>Basis-URL (optional) <input id="soundBaseUrl" placeholder="http://homeassistant.local:8123"></label>
+</div>
+<div class="row">
+<label><input id="soundMaster" type="checkbox"> Sound gesamt</label>
+<label><input id="soundPersonEnabled" type="checkbox"> Person-Ton</label>
+<label><input id="soundPostEnabled" type="checkbox"> Post-Ton</label>
+</div>
+<div class="row">
+<label><input id="soundTimeEnabled" type="checkbox"> Zeitbereich aktiv</label>
+<label>Von <input id="soundTimeStart" type="time" value="07:00"></label>
+<label>Bis <input id="soundTimeEnd" type="time" value="22:00"></label>
+<span id="soundTimeNow"></span>
+</div>
+<div class="row"><button id="soundSave">Sound-Einstellungen speichern</button><button id="personSoundTest" class="secondary">Person-Ton testen</button><button id="postSoundTest" class="secondary">Post-Ton testen</button></div>
+</div>
+
 <div class="panel"><h3>Personen-/Postboten-Bildbereich</h3><div class="statusline">Nur dieser Bildbereich wird bei den drei Motion-JPEGs an YOLO übergeben. Er ersetzt das bisher fest codierte Fenster 25–75 % / 10–90 %.</div><div><strong class="personTxt">Bildbereich:</strong> <code id="personCoords">-</code></div><div class="row"><button id="personShow" class="secondary">Bildbereich einblenden</button><button id="personSave">Bildbereich speichern</button></div></div>
 </main><script>(()=>{
 const $=id=>document.getElementById(id),stage=$('stage'),img=$('cam'),msg=$('msg');const boxes={fixed:$('fixedRoi'),moving:$('movingRoi'),gfixed:$('gFixedRoi'),gmoving:$('gMovingRoi'),g2fixed:$('g2FixedRoi'),g2moving:$('g2MovingRoi'),person:$('personRoi')};
@@ -2399,18 +2751,26 @@ function stagePoint(ev){const q=stage.getBoundingClientRect();return{x:ev.client
 window.addEventListener('pointermove',ev=>{if(!drag)return;const p=stagePoint(ev),r=rois[drag.name],s=drag.startR,W=p.W,H=p.H;if(drag.handle==='rotate'&&drag.name!=='person'){const cx=s.cx*W,cy=s.cy*H;let a=Math.atan2(p.y-cy,p.x-cx)*180/Math.PI+90;while(a>180)a-=360;while(a<-180)a+=360;r.angle=clamp(a,-45,45)}else if(drag.handle==='move'){r.cx=clamp(s.cx+(p.x-drag.start.x)/W,s.w/2,1-s.w/2);r.cy=clamp(s.cy+(p.y-drag.start.y)/H,s.h/2,1-s.h/2)}else{const a=(drag.name==='person'?0:s.angle)*Math.PI/180,dx=p.x-drag.start.x,dy=p.y-drag.start.y;const lx=dx*Math.cos(a)+dy*Math.sin(a),ly=-dx*Math.sin(a)+dy*Math.cos(a);const sx=drag.handle.includes('e')?1:-1,sy=drag.handle.includes('s')?1:-1;r.w=clamp(s.w+2*sx*lx/W,.01,.98);r.h=clamp(s.h+2*sy*ly/H,.01,.98);r.cx=clamp(s.cx,r.w/2,1-r.w/2);r.cy=clamp(s.cy,r.h/2,1-r.h/2)}render()});window.addEventListener('pointerup',()=>drag=null);window.addEventListener('pointercancel',()=>drag=null);
 async function jsonFetch(url,opt={}){const r=await fetch(url,opt),j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('HTTP '+r.status));if(j.calibration_ui_remaining_seconds!==undefined)startUiTimer(j.calibration_ui_remaining_seconds);return j}
 async function loadStatus(){const s=await jsonFetch(endpoint('status'));if(s.rois){rois.fixed=s.rois.fixed;rois.moving=s.rois.moving}if(s.vertical_rois){rois.gfixed=s.vertical_rois.fixed;rois.gmoving=s.vertical_rois.moving}if(s.vertical2_rois){rois.g2fixed=s.vertical2_rois.fixed;rois.g2moving=s.vertical2_rois.moving}if(s.person_roi)rois.person=s.person_roi;verticalEnabled=!!s.vertical_enabled;vertical2Enabled=!!s.vertical2_enabled;$('garagePanel').style.display=verticalEnabled?'block':'none';$('gEdgeTop').style.display=verticalEnabled?'inline-block':'none';$('garage2Panel').style.display=vertical2Enabled?'block':'none';$('g2EdgeTop').style.display=vertical2Enabled?'inline-block':'none';$('doorName').value=s.door_name||'';$('doorEntity').value=s.door_entity_id||'';$('verticalName').value=s.vertical_name||'';$('verticalEntity').value=s.vertical_entity_id||'';$('vertical2Name').value=s.vertical2_name||'';$('vertical2Entity').value=s.vertical2_entity_id||'';$('camera').textContent=s.camera_entity;$('calibrated').textContent=s.calibrated?'ja':'nein';$('doorstate').textContent=s.door_open===true?'OFFEN':(s.door_open===false?'geschlossen':'-');$('edges').textContent=(s.last_fixed_x==null||s.last_moving_x==null)?'-':`Zarge ${Number(s.last_fixed_x).toFixed(2)} px · Tür ${Number(s.last_moving_x).toFixed(2)} px`;$('score').textContent=s.last_shift_px==null?'-':`${Number(s.last_shift_px).toFixed(2)} px`;$('gap').textContent=s.last_gap_px==null?'-':`${Number(s.last_gap_px).toFixed(2)} px / Ref ${s.reference_gap_px==null?'-':Number(s.reference_gap_px).toFixed(2)+' px'}`;$('quality').textContent=s.edge_quality==null?'-':Number(s.edge_quality).toFixed(2);$('tracking').textContent=(s.fixed_tracked==null||s.moving_tracked==null)?'-':((s.fixed_tracked&&s.moving_tracked)?'OK':('KANTE VERLOREN'+(s.tracking_reason?' · '+s.tracking_reason:'')));$('pause').textContent=`${Number(s.pause_remaining_seconds||0).toFixed(0)} s`;$('gCalibrated').textContent=s.vertical_calibrated?'ja':'nein';$('gDoorState').textContent=s.vertical_open===true?'OFFEN':s.vertical_open===false?'geschlossen':'-';$('gShift').textContent=s.vertical_shift_px==null?'-':Number(s.vertical_shift_px).toFixed(2)+' px';$('gGap').textContent=s.vertical_gap_px==null?'-':`${Number(s.vertical_gap_px).toFixed(2)} px / Ref ${s.vertical_reference_gap_px==null?'-':Number(s.vertical_reference_gap_px).toFixed(2)+' px'}`;$('gQuality').textContent=s.vertical_quality==null?'-':Number(s.vertical_quality).toFixed(2);$('gTracking').textContent=(s.vertical_fixed_tracked==null||s.vertical_moving_tracked==null)?'-':((s.vertical_fixed_tracked&&s.vertical_moving_tracked)?'OK':('KANTE VERLOREN'+(s.vertical_tracking_reason?' · '+s.vertical_tracking_reason:'')));$('gLast').textContent=s.vertical_last_check||'-';$('gError').textContent=s.vertical_last_error?('Fehler: '+s.vertical_last_error):'';$('g2Calibrated').textContent=s.vertical2_calibrated?'ja':'nein';$('g2DoorState').textContent=s.vertical2_open===true?'OFFEN':s.vertical2_open===false?'geschlossen':'-';$('g2Shift').textContent=s.vertical2_shift_px==null?'-':Number(s.vertical2_shift_px).toFixed(2)+' px';$('g2Gap').textContent=s.vertical2_gap_px==null?'-':`${Number(s.vertical2_gap_px).toFixed(2)} px / Ref ${s.vertical2_reference_gap_px==null?'-':Number(s.vertical2_reference_gap_px).toFixed(2)+' px'}`;$('g2Quality').textContent=s.vertical2_quality==null?'-':Number(s.vertical2_quality).toFixed(2);$('g2Tracking').textContent=(s.vertical2_fixed_tracked==null||s.vertical2_moving_tracked==null)?'-':((s.vertical2_fixed_tracked&&s.vertical2_moving_tracked)?'OK':('KANTE VERLOREN'+(s.vertical2_tracking_reason?' · '+s.vertical2_tracking_reason:'')));$('g2Last').textContent=s.vertical2_last_check||'-';$('g2Error').textContent=s.vertical2_last_error?('Fehler: '+s.vertical2_last_error):'';if(s.last_error)msg.textContent='Letzter Fehler: '+s.last_error;render()}
+async function loadSoundOptions(){const d=await jsonFetch(endpoint('sound_options'));const st=d.settings||{},sw=d.switches||{};$('soundPlayer').value=st.media_player||'';$('personSound').value=st.person_sound||'';$('postSound').value=st.post_sound||'';$('soundContentType').value=st.media_content_type||'music';$('soundBaseUrl').value=st.base_url||'';$('soundTimeEnabled').checked=!!st.time_window_enabled;$('soundTimeStart').value=st.time_start||'07:00';$('soundTimeEnd').value=st.time_end||'22:00';$('soundMaster').checked=!!sw.master;$('soundPersonEnabled').checked=sw.person!==false;$('soundPostEnabled').checked=sw.post!==false;$('soundTimeNow').textContent=st.time_window_enabled?(d.time_allowed_now?'aktuell erlaubt':'aktuell stumm'):'ganztags erlaubt';const mpl=$('soundPlayers');mpl.innerHTML='';(d.media_players||[]).forEach(x=>{const o=document.createElement('option');o.value=x.entity_id;o.label=x.name;mpl.appendChild(o)});const fl=$('soundFiles');fl.innerHTML='';(d.sound_files||[]).forEach(x=>{const o=document.createElement('option');o.value=x;fl.appendChild(o)})}
+async function setSoundSwitch(kind,enabled){await jsonFetch(endpoint('sound_switch'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind,enabled})})}
+$('soundMaster').addEventListener('change',async e=>{try{await setSoundSwitch('master',e.target.checked);msg.textContent='Sound gesamt '+(e.target.checked?'eingeschaltet.':'stummgeschaltet.')}catch(err){msg.textContent='Fehler: '+err.message;await loadSoundOptions()}});
+$('soundPersonEnabled').addEventListener('change',async e=>{try{await setSoundSwitch('person',e.target.checked);msg.textContent='Person-Ton '+(e.target.checked?'eingeschaltet.':'stummgeschaltet.')}catch(err){msg.textContent='Fehler: '+err.message;await loadSoundOptions()}});
+$('soundPostEnabled').addEventListener('change',async e=>{try{await setSoundSwitch('post',e.target.checked);msg.textContent='Post-Ton '+(e.target.checked?'eingeschaltet.':'stummgeschaltet.')}catch(err){msg.textContent='Fehler: '+err.message;await loadSoundOptions()}});
+$('soundSave').addEventListener('click',async()=>{try{await jsonFetch(endpoint('sound_settings'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({media_player:$('soundPlayer').value,person_sound:$('personSound').value,post_sound:$('postSound').value,media_content_type:$('soundContentType').value,base_url:$('soundBaseUrl').value,time_window_enabled:$('soundTimeEnabled').checked,time_start:$('soundTimeStart').value,time_end:$('soundTimeEnd').value})});msg.textContent='Sound-Einstellungen gespeichert.';await loadSoundOptions()}catch(e){msg.textContent='Fehler: '+e.message}});
+$('personSoundTest').addEventListener('click',async()=>{try{await jsonFetch(endpoint('sound_test'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:'person'})});msg.textContent='Person-Ton getestet.'}catch(e){msg.textContent='Fehler: '+e.message}});
+$('postSoundTest').addEventListener('click',async()=>{try{await jsonFetch(endpoint('sound_test'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:'post'})});msg.textContent='Post-Ton getestet.'}catch(e){msg.textContent='Fehler: '+e.message}});
 function imageUrl(){const q=encodeURIComponent(JSON.stringify({fixed:rois.fixed,moving:rois.moving})),vq=encodeURIComponent(JSON.stringify({fixed:rois.gfixed,moving:rois.gmoving})),v2q=encodeURIComponent(JSON.stringify({fixed:rois.g2fixed,moving:rois.g2moving}));if(viewMode==='door-edge')return endpoint('edge_image')+'?t='+Date.now()+'&rois='+q;if(viewMode==='vertical-edge')return endpoint('vertical_edge_image')+'?t='+Date.now()+'&rois='+vq;if(viewMode==='vertical2-edge')return endpoint('vertical2_edge_image')+'?t='+Date.now()+'&rois='+v2q;return endpoint('image')+'?t='+Date.now()}function reloadImage(){img.src=imageUrl()}
 $('reload').addEventListener('click',()=>{viewMode='normal';overlays();reloadImage()});$('edge').addEventListener('click',()=>{viewMode=viewMode==='door-edge'?'normal':'door-edge';overlays();reloadImage()});function toggleVerticalEdge(){if(!verticalEnabled)return;viewMode=viewMode==='vertical-edge'?'normal':'vertical-edge';overlays();reloadImage()}$('gEdge').addEventListener('click',toggleVerticalEdge);$('gEdgeTop').addEventListener('click',toggleVerticalEdge);function toggleVertical2Edge(){if(!vertical2Enabled)return;viewMode=viewMode==='vertical2-edge'?'normal':'vertical2-edge';overlays();reloadImage()}$('g2Edge').addEventListener('click',toggleVertical2Edge);$('g2EdgeTop').addEventListener('click',toggleVertical2Edge);
 function togglePerson(){viewMode='normal';personVisible=!personVisible;$('personToggle').classList.toggle('active',personVisible);$('personShow').classList.toggle('active',personVisible);$('personToggle').textContent=personVisible?'Personen-Bildbereich ausblenden':'Personen-Bildbereich';$('personShow').textContent=personVisible?'Bildbereich ausblenden':'Bildbereich einblenden';overlays();reloadImage()}$('personToggle').addEventListener('click',togglePerson);$('personShow').addEventListener('click',togglePerson);
 $('save').addEventListener('click',async()=>{try{await jsonFetch(endpoint('roi'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fixed:rois.fixed,moving:rois.moving})});msg.textContent='Beide drehbaren Tür-ROI gespeichert. Bitte Tür geschlossen neu kalibrieren.';await loadStatus();reloadImage()}catch(e){msg.textContent='Fehler: '+e.message}});$('calibrate').addEventListener('click',async()=>{try{await jsonFetch(endpoint('calibrate'),{method:'POST'});msg.textContent='Geschlossene Tür wurde als Referenz gespeichert.';await loadStatus();reloadImage()}catch(e){msg.textContent='Fehler: '+e.message}});$('check').addEventListener('click',async()=>{try{const s=await jsonFetch(endpoint('check'),{method:'POST'});msg.textContent='Prüfung: '+(s.door_open?'OFFEN':'geschlossen')+' · Verschiebung '+Number(s.shift_px).toFixed(2)+' px';await loadStatus();if(viewMode==='door-edge')reloadImage()}catch(e){msg.textContent='Fehler: '+e.message}});
 $('gSave').addEventListener('click',async()=>{try{await jsonFetch(endpoint('vertical_roi'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fixed:rois.gfixed,moving:rois.gmoving})});msg.textContent='Vertikale ROI gespeichert. Bitte neu kalibrieren.';await loadStatus();if(viewMode==='vertical-edge')reloadImage()}catch(e){msg.textContent='Fehler: '+e.message}});$('gCal').addEventListener('click',async()=>{try{await jsonFetch(endpoint('vertical_calibrate'),{method:'POST'});msg.textContent='Vertikale Referenz kalibriert.';await loadStatus();if(viewMode==='vertical-edge')reloadImage()}catch(e){msg.textContent='Fehler: '+e.message}});$('gCheck').addEventListener('click',async()=>{try{const r=await jsonFetch(endpoint('vertical_check'),{method:'POST'});msg.textContent='Vertikale Prüfung: '+(r.open?'OFFEN':'geschlossen')+' · Verschiebung '+Number(r.shift_px).toFixed(2)+' px';await loadStatus();if(viewMode==='vertical-edge')reloadImage()}catch(e){msg.textContent='Fehler: '+e.message}});
 $('g2Save').addEventListener('click',async()=>{try{await jsonFetch(endpoint('vertical2_roi'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fixed:rois.g2fixed,moving:rois.g2moving})});msg.textContent='Garage-2-ROI gespeichert. Bitte neu kalibrieren.';await loadStatus();if(viewMode==='vertical2-edge')reloadImage()}catch(e){msg.textContent='Fehler: '+e.message}});$('g2Cal').addEventListener('click',async()=>{try{await jsonFetch(endpoint('vertical2_calibrate'),{method:'POST'});msg.textContent='Garage 2 Referenz kalibriert.';await loadStatus();if(viewMode==='vertical2-edge')reloadImage()}catch(e){msg.textContent='Fehler: '+e.message}});$('g2Check').addEventListener('click',async()=>{try{const r=await jsonFetch(endpoint('vertical2_check'),{method:'POST'});msg.textContent='Garage 2 Prüfung: '+(r.open?'OFFEN':'geschlossen')+' · Verschiebung '+Number(r.shift_px).toFixed(2)+' px';await loadStatus();if(viewMode==='vertical2-edge')reloadImage()}catch(e){msg.textContent='Fehler: '+e.message}});$('personSave').addEventListener('click',async()=>{try{const r=await jsonFetch(endpoint('person_roi'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rois.person)});rois.person=r.person_roi||rois.person;msg.textContent='Personen-/Postboten-Bildbereich gespeichert. Er gilt ab dem nächsten 3er-Batch.';render()}catch(e){msg.textContent='Fehler: '+e.message}});
-img.addEventListener('load',render);img.addEventListener('error',()=>{msg.textContent='Bild konnte nicht geladen werden. Bitte Ansicht wechseln oder erneut laden.'});window.addEventListener('resize',render);loadStatus().then(reloadImage).catch(e=>msg.textContent='Fehler: '+e.message)
+img.addEventListener('load',render);img.addEventListener('error',()=>{msg.textContent='Bild konnte nicht geladen werden. Bitte Ansicht wechseln oder erneut laden.'});window.addEventListener('resize',render);loadStatus().then(async()=>{await loadSoundOptions();reloadImage()}).catch(e=>msg.textContent='Fehler: '+e.message)
 })();</script></body></html>'''
 
 
 class DoorCalibrationHandler(BaseHTTPRequestHandler):
-    server_version = "SmartifyPersonDetectionUI/1.6.2"
+    server_version = "SmartifyPersonDetectionUI/1.6.3"
 
     def log_message(self, fmt, *args):
         print(
@@ -2540,6 +2900,15 @@ class DoorCalibrationHandler(BaseHTTPRequestHandler):
             )
             return
 
+        if path.endswith("/api/sound_options") or path == "/api/sound_options":
+            if not self._require_active_ui():
+                return
+            try:
+                self._json(sound_options_payload())
+            except Exception as e:
+                self._json({"error": str(e)}, 500)
+            return
+
         if path.endswith("/api/edge_image") or path == "/api/edge_image":
             if not self._require_active_ui():
                 return
@@ -2643,6 +3012,28 @@ class DoorCalibrationHandler(BaseHTTPRequestHandler):
         path = self._path()
 
         try:
+            if path.endswith("/api/sound_settings") or path == "/api/sound_settings":
+                update_sound_settings(self._body_json())
+                self._json({"ok": True, **sound_options_payload()})
+                return
+
+            if path.endswith("/api/sound_switch") or path == "/api/sound_switch":
+                data = self._body_json()
+                kind = str(data.get("kind", "")).strip().lower()
+                enabled = bool(data.get("enabled", False))
+                set_sound_switch(kind, enabled)
+                self._json({"ok": True, "switches": sound_options_payload()["switches"]})
+                return
+
+            if path.endswith("/api/sound_test") or path == "/api/sound_test":
+                data = self._body_json()
+                kind = str(data.get("kind", "")).strip().lower()
+                if kind not in ("person", "post"):
+                    raise ValueError("Sound-Test kennt nur person oder post.")
+                play_detection_sound(kind, force=True)
+                self._json({"ok": True})
+                return
+
             if path.endswith("/api/roi") or path == "/api/roi":
                 data = self._body_json()
 
@@ -2816,6 +3207,15 @@ def on_message(client, userdata, msg):
         payload = ""
 
 
+    sound_commands = {
+        SOUND_MASTER_COMMAND_TOPIC: "master",
+        SOUND_PERSON_COMMAND_TOPIC: "person",
+        SOUND_POST_COMMAND_TOPIC: "post",
+    }
+    if msg.topic in sound_commands and payload in ("ON", "OFF"):
+        set_sound_switch(sound_commands[msg.topic], payload == "ON")
+        return
+
     if msg.topic == POST_RESET_TOPIC and payload == "RESET":
         print("Post abgeholt: separater Post-Reset empfangen.")
         if post_timer:
@@ -2897,8 +3297,15 @@ def connected(
 
         client.subscribe(RESET_TOPIC)
         client.subscribe(POST_RESET_TOPIC)
+        client.subscribe(SOUND_MASTER_COMMAND_TOPIC)
+        client.subscribe(SOUND_PERSON_COMMAND_TOPIC)
+        client.subscribe(SOUND_POST_COMMAND_TOPIC)
+        publish_sound_switch_states()
 
-        print(f"Reset-Topics abonniert: {RESET_TOPIC}, {POST_RESET_TOPIC}")
+        print(
+            f"Reset-Topics abonniert: {RESET_TOPIC}, {POST_RESET_TOPIC}; "
+            "Sound-Schalter bereit."
+        )
 
     else:
 
