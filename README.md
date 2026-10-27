@@ -89,6 +89,10 @@ Standardmäßig werden bis zu **100** Bilder als stabile Dateien
 `rtsp_000.jpg` bis `rtsp_099.jpg` geführt. Die tatsächliche Frame-Zeit wird als Datei-mtime
 gespeichert und erscheint damit als `Last-Modified`.
 
+## Weboberfläche
+
+Die Ingress-Seite heißt jetzt **Smartify Person Detection – Einstellungen** und bündelt Kamera-/Kalibrierfunktionen sowie die Sound-Konfiguration in einer gemeinsamen Oberfläche.
+
 ## Version
 
-Aktuell: **1.6.3**
+Aktuell: **1.6.4**
