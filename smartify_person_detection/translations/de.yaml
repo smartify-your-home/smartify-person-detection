@@ -58,7 +58,7 @@ configuration:
     description: 'Direkten RTSP-Ringpuffer fuer Ereignisbilder verwenden. Standard: ein'
   rtsp_url:
     name: RTSP-URL
-    description: 'Direkte RTSP-Adresse der Kamera. Standard: rtsp://192.168.0.226:554/h264Preview_01_main'
+    description: 'Direkte RTSP-Adresse der Kamera. Standard: rtsp://camera.local:554/stream'
   rtsp_username:
     name: RTSP-Benutzer
     description: 'Optionaler RTSP-Benutzer. Standard: leer'
@@ -106,7 +106,7 @@ configuration:
     description: 'Horizontale Haustür-Kantenmessung aktivieren. Standard: ein'
   door_camera_entity:
     name: Kamera-Entity
-    description: 'Kamera für Tür- und Garagenprüfungen. Standard: camera.cam_pt2_mainstream'
+    description: 'Kamera für Tür- und Garagenprüfungen. Standard: camera.front_door'
   door_check_interval_seconds:
     name: Tür-Prüfintervall
     description: 'Abstand zwischen Kamera-Prüfungen. Minimum intern 5 s. Standard: 60 s'
