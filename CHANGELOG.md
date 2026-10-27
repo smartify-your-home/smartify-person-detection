@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.6
+
+- Sound-Konfiguration aus der ROI-/Kalibrieroberfläche entfernt
+- Sound-Optionen auf der nativen Home-Assistant-App-Konfigurationsseite zusammenhängend sortiert
+- native App-Konfiguration ist wieder alleinige Quelle für Mediaplayer, Sounddateien und Zeitfenster
+- alte in `/data/sound_settings.json` gespeicherte Werte aus 1.6.3–1.6.5 werden nicht mehr bevorzugt
+- Ingress-Seite wieder klar als **Bildbereiche & Kalibrierung** bezeichnet
+- MQTT-Sound-Schalter bleiben unverändert verfügbar
+
 ## 1.6.5
 
 - Sound-Bereich aus den Tür-/Garagenabschnitten herausgenommen und direkt unter **System & Kamera** platziert
