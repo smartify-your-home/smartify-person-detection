@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Slideshow Persondetection</title>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 12px;
+      font-family: Arial, sans-serif;
+      background: #6b6b6b;
+      color: #fff;
+    }
+
+    header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 0 12px 0;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    #status {
+      font-size: 12px;
+      color: #e0e0e0;
+      white-space: nowrap;
+    }
+
+    .card {
+      width: 100%;
+      margin-bottom: 16px;
+      background: #595959;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #858585;
+      box-sizing: border-box;
+      content-visibility: auto;
+      contain-intrinsic-size: auto 320px;
+    }
+
+    .card a {
+      display: block;
+      width: 100%;
+    }
+
+    .card img {
+      width: 100%;
+      height: auto;
+      aspect-ratio: 16 / 9;
+      display: block;
+      background: #444;
+      object-fit: contain;
+    }
+
+    .info {
+      padding: 8px;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .filename {
+      font-weight: bold;
+      color: #fff;
+    }
+
+    .timestamp {
+      color: #e0e0e0;
+    }
+
+    .empty {
+      padding: 40px 12px;
+      text-align: center;
+      color: #f0f0f0;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h2>Slideshow Persondetection</h2>
+    <span id="status">Lädt …</span>
+  </header>
+
+  <div id="gallery"></div>
+
+  <script>
+    const IMAGE_COUNT = 100;
+    const IMAGE_BASE_PATH = "/local/cam_pt2_motion/";
+    const INDEX_FILE = IMAGE_BASE_PATH + "index.json";
+    const REFRESH_SECONDS = 60;
+    const MAX_PARALLEL = 6;
+    const EAGER_IMAGES = 4;
+
+    const gallery = document.getElementById("gallery");
+    const statusEl = document.getElementById("status");
+    const cards = new Map();
+    let busy = false;
+
+    const pad = (n) => String(n).padStart(3, "0");
+
+    function formatDate(ms) {
+      if (!ms) return "Zeit unbekannt";
+      return new Date(ms).toLocaleString("de-DE", {
+        day: "2-digit", month: "2-digit", year: "numeric",
+        hour: "2-digit", minute: "2-digit", second: "2-digit"
+      });
+    }
+
+    async function loadFromIndex() {
+      try {
+        const r = await fetch(INDEX_FILE + "?t=" + Date.now(), { cache: "no-store" });
+        if (!r.ok) return null;
+        const data = await r.json();
+        if (!Array.isArray(data)) return null;
+        return data
+          .filter((e) => e && e.file)
+          .map((e) => ({ filename: e.file, time: Number(e.mtime) * 1000 || 0 }));
+      } catch {
+        return null;
+      }
+    }
+
+    async function loadByScan() {
+      const names = Array.from({ length: IMAGE_COUNT }, (_, i) => `rtsp_${pad(i)}.jpg`);
+      const results = [];
+      let next = 0;
+
+      async function worker() {
+        while (next < names.length) {
+          const filename = names[next++];
+          try {
+            const r = await fetch(IMAGE_BASE_PATH + filename, { method: "HEAD", cache: "no-store" });
+            if (!r.ok) continue;
+            const lm = r.headers.get("Last-Modified");
+            results.push({ filename, time: lm ? new Date(lm).getTime() || 0 : 0 });
+          } catch {
+          }
+        }
+      }
+
+      await Promise.all(Array.from({ length: MAX_PARALLEL }, worker));
+      return results;
+    }
+
+    function createCard(filename) {
+      const el = document.createElement("div");
+      el.className = "card";
+
+      const link = document.createElement("a");
+      link.target = "_blank";
+      link.rel = "noopener";
+
+      const img = document.createElement("img");
+      img.alt = filename;
+      img.decoding = "async";
+      img.onerror = () => {
+        el.remove();
+        cards.delete(filename);
+      };
+      link.appendChild(img);
+
+      const info = document.createElement("div");
+      info.className = "info";
+      const name = document.createElement("div");
+      name.className = "filename";
+      name.textContent = filename;
+      const ts = document.createElement("div");
+      ts.className = "timestamp";
+      info.append(name, ts);
+
+      el.append(link, info);
+      return { el, img, link, ts, version: null };
+    }
+
+    function render(images) {
+      images.sort((a, b) => b.time - a.time);
+      const seen = new Set();
+
+      images.forEach(({ filename, time }, idx) => {
+        seen.add(filename);
+        let card = cards.get(filename);
+        if (!card) {
+          card = createCard(filename);
+          cards.set(filename, card);
+        }
+
+        const version = String(time);
+        if (card.version !== version) {
+          const url = IMAGE_BASE_PATH + filename + "?v=" + encodeURIComponent(version);
+          card.img.loading = idx < EAGER_IMAGES ? "eager" : "lazy";
+          card.img.src = url;
+          card.link.href = url;
+          card.ts.textContent = formatDate(time);
+          card.version = version;
+        }
+
+        gallery.appendChild(card.el);
+      });
+
+      for (const [filename, card] of cards) {
+        if (!seen.has(filename)) {
+          card.el.remove();
+          cards.delete(filename);
+        }
+      }
+
+      const empty = gallery.querySelector(".empty");
+      if (images.length === 0 && !empty) {
+        const div = document.createElement("div");
+        div.className = "empty";
+        div.textContent = "Noch keine Bewegungsbilder vorhanden.";
+        gallery.appendChild(div);
+      } else if (images.length > 0 && empty) {
+        empty.remove();
+      }
+    }
+
+    async function refresh() {
+      if (busy || document.hidden) return;
+      busy = true;
+      try {
+        const images = (await loadFromIndex()) ?? (await loadByScan());
+        render(images);
+        statusEl.textContent =
+          `${images.length} Bilder, Stand ${new Date().toLocaleTimeString("de-DE")}`;
+      } finally {
+        busy = false;
+      }
+    }
+
+    refresh();
+    setInterval(refresh, REFRESH_SECONDS * 1000);
+
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) refresh();
+    });
+  </script>
+</body>
+</html>
