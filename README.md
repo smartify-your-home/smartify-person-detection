@@ -23,6 +23,21 @@ deshalb als **neue App** und übernimmt den alten `/data`-Bereich nicht automati
 Entfernen einer älteren Installation sollten insbesondere Tür-/Garagentor-Kalibrierungen und
 weitere gewünschte Einstellungen gesichert bzw. in der neuen App neu gesetzt werden.
 
+## Slideshow Persondetection
+
+Beim Start der App wird die mitgelieferte Bildanzeige automatisch nach
+
+`/homeassistant/www/slideshow_persondetection.html`
+
+kopiert und ist in Home Assistant über
+
+`/local/slideshow_persondetection.html`
+
+erreichbar.
+
+Die Slideshow zeigt bis zu 100 Ringpufferbilder aus `/local/cam_pt2_motion/`, sortiert sie nach
+`Last-Modified` und verwendet einen neutralen mittelgrauen Hintergrund.
+
 ## Erkennungston
 
 Optional kann bei jeder neuen Erkennung ein Home-Assistant-Mediaplayer einen Ton abspielen.
@@ -51,4 +66,4 @@ gespeichert und erscheint damit als `Last-Modified`.
 
 ## Version
 
-Aktuell: **1.6.0**
+Aktuell: **1.6.1**
