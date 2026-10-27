@@ -4,7 +4,7 @@ configuration:
     description: 'Directory containing camera motion JPEGs. Default: /homeassistant/www/cam_pt2_motion'
   snapshot_dir:
     name: Snapshot directory
-    description: 'Directory for postbote_latest.jpg and person_latest.jpg. Default: /homeassistant/www/postbote_snapshots'
+    description: 'Directory for postbote_latest.jpg and person_latest.jpg. Default: /homeassistant/www/smartify_person_detection'
   mqtt_host:
     name: MQTT host
     description: 'MQTT broker. Default: core-mosquitto'
@@ -58,7 +58,7 @@ configuration:
     description: 'Use the direct RTSP ring buffer for event images. Default: on'
   rtsp_url:
     name: RTSP URL
-    description: 'Direct camera RTSP address. Default: rtsp://192.168.0.226:554/h264Preview_01_main'
+    description: 'Direct camera RTSP address. Default: rtsp://camera.local:554/stream'
   rtsp_username:
     name: RTSP username
     description: 'Optional RTSP username. Default: empty'
@@ -106,7 +106,7 @@ configuration:
     description: 'Enable horizontal door edge measurement. Default: on'
   door_camera_entity:
     name: Camera entity
-    description: 'Camera used for door and garage checks. Default: camera.cam_pt2_mainstream'
+    description: 'Camera used for door and garage checks. Default: camera.front_door'
   door_check_interval_seconds:
     name: Door check interval
     description: 'Seconds between camera checks. Internal minimum 5 s. Default: 60 s'
@@ -154,10 +154,10 @@ configuration:
     description: 'Vertical shift up to which CLOSED is accepted. Default: 1.5 px'
   post_entity_id:
     name: Post entity ID
-    description: 'Requested post binary entity ID. Default: binary_sensor.postboten_erkennung_post_war_da'
+    description: 'Requested post binary entity ID. Default: binary_sensor.smartify_person_detection_post'
   person_entity_id:
     name: Person entity ID
-    description: 'Requested person binary entity ID. Default: binary_sensor.postboten_erkennung_person_erkannt'
+    description: 'Requested person binary entity ID. Default: binary_sensor.smartify_person_detection_person'
   vertical2_enabled:
     name: Garage door 2 enabled
     description: 'Enable the second vertical edge measurement. Default: off'
