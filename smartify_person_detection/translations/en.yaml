@@ -4,7 +4,7 @@ configuration:
     description: 'Directory containing camera motion JPEGs. Default: /homeassistant/www/cam_pt2_motion'
   snapshot_dir:
     name: Snapshot directory
-    description: 'Directory for postbote_latest.jpg and person_latest.jpg. Default: /homeassistant/www/smartify_person_detection'
+    description: 'Directory for post_latest.jpg and person_latest.jpg. Default: /homeassistant/www/smartify_person_detection'
   mqtt_host:
     name: MQTT host
     description: 'MQTT broker. Default: core-mosquitto'
@@ -19,7 +19,7 @@ configuration:
     description: 'Optional MQTT password. Default: empty'
   mqtt_topic_prefix:
     name: MQTT topic prefix
-    description: 'Base topic for this app. Default: postbote'
+    description: 'Base topic for this app. Default: smartify_person_detection'
   mqtt_discovery_prefix:
     name: MQTT discovery prefix
     description: 'Home Assistant MQTT discovery prefix. Default: homeassistant'
@@ -46,16 +46,16 @@ configuration:
     description: 'Seconds before the person binary auto-resets. 0 disables the timer. Default: 60 s'
   post_auto_reset:
     name: Post auto reset
-    description: 'Enable timer-based reset for post. Default: on'
+    description: 'Enable timer-based reset for post. Default: off'
   person_auto_reset:
     name: Person auto reset
-    description: 'Enable timer-based reset for person. Default: on'
+    description: 'Enable timer-based reset for person. Default: off'
   reset_binaries_at_midnight:
     name: Reset binaries at midnight
-    description: 'Set post and person binaries to OFF at day change. Default: on'
+    description: 'Set post and person binaries to OFF at day change. Default: off'
   rtsp_enabled:
     name: Enable RTSP mode
-    description: 'Use the direct RTSP ring buffer for event images. Default: on'
+    description: 'Use the direct RTSP ring buffer for event images. Default: off'
   rtsp_url:
     name: RTSP URL
     description: 'Direct camera RTSP address. Default: rtsp://camera.local:554/stream'
@@ -94,7 +94,7 @@ configuration:
     description: 'After an RTSP event, re-arm only after all trigger entities have continuously remained OFF for this duration. Default: 10 s'
   rtsp_max_files:
     name: RTSP maximum files
-    description: 'Maximum rotating rtsp_*.jpg files in the motion folder. Default: 60'
+    description: 'Maximum rotating rtsp_000.jpg through rtsp_099.jpg files in the motion folder. Default: 100'
   rtsp_fallback_after_seconds:
     name: RTSP fallback after
     description: 'If RTSP stays unavailable this long, automatically use the robust folder batch mode. Default: 15 s'
@@ -103,7 +103,7 @@ configuration:
     description: 'Prefer the latest RTSP frame for door/garage checks; camera_proxy remains the fallback. Default: off'
   door_enabled:
     name: Door detection enabled
-    description: 'Enable horizontal door edge measurement. Default: on'
+    description: 'Enable horizontal door edge measurement. Default: off'
   door_camera_entity:
     name: Camera entity
     description: 'Camera used for door and garage checks. Default: camera.front_door'
