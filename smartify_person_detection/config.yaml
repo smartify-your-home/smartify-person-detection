@@ -35,8 +35,8 @@ options:
   post_auto_reset: false
   person_auto_reset: false
   reset_binaries_at_midnight: false
-  rtsp_enabled: true
-  rtsp_url: rtsp://192.168.0.226:554/h264Preview_01_main
+  rtsp_enabled: false
+  rtsp_url: ''
   rtsp_username: ''
   rtsp_password: ''
   rtsp_transport: tcp
@@ -45,14 +45,14 @@ options:
   rtsp_pre_seconds: 2.0
   rtsp_post_seconds: 3.0
   rtsp_analyze_fps: 2.0
-  rtsp_trigger_entities: binary_sensor.front_door_person,binary_sensor.front_door_fahrzeug
+  rtsp_trigger_entities: ''
   rtsp_trigger_poll_seconds: 0.5
   rtsp_rearm_off_seconds: 10
   rtsp_max_files: 100
   rtsp_fallback_after_seconds: 15
   door_use_rtsp: false
-  door_enabled: true
-  door_camera_entity: camera.cam_pt2_mainstream
+  door_enabled: false
+  door_camera_entity: ''
   door_check_interval_seconds: 60
   door_pause_after_motion_seconds: 20
   door_open_shift_pixels: 3.0
