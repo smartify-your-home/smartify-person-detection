@@ -67,11 +67,11 @@ Home Assistant zu verwenden. Bei Bedarf kann eine eigene HA-Basis-URL gesetzt we
 
 ### Sound-Schalter in Home Assistant
 
-Über MQTT Discovery werden drei Schalter angelegt:
+Über MQTT Discovery werden drei Schalter mit festen Standard-Entity-IDs angelegt:
 
-- `switch.smartify_person_detection_erkennungston` bzw. die von Home Assistant erzeugte Entity für **Erkennungston**
-- **Ton Person**
-- **Ton Post**
+- `switch.smartify_person_detection_sound` – Sound gesamt
+- `switch.smartify_person_detection_person_sound` – Person-Ton
+- `switch.smartify_person_detection_post_sound` – Post-Ton
 
 Damit kann der gesamte Sound oder Person/Post getrennt stummgeschaltet werden. Die Zustände
 werden in der App persistent gespeichert und bleiben nach einem Neustart erhalten. Die Schalter
@@ -91,8 +91,8 @@ gespeichert und erscheint damit als `Last-Modified`.
 
 ## Weboberfläche
 
-Die Ingress-Seite heißt jetzt **Smartify Person Detection – Einstellungen** und bündelt Kamera-/Kalibrierfunktionen sowie die Sound-Konfiguration in einer gemeinsamen Oberfläche.
+Die Ingress-Seite heißt **Smartify Person Detection – Einstellungen**. Der Bereich **Sound & Benachrichtigung** steht direkt oben nach **System & Kamera**; Tür-, Garage- und ROI-Kalibrierung bleiben darunter getrennt.
 
 ## Version
 
-Aktuell: **1.6.4**
+Aktuell: **1.6.5**
