@@ -174,8 +174,8 @@ configuration:
     name: Garage door 2 close threshold
     description: 'Vertical shift up to which CLOSED is accepted. Default: 1.5 px'
   sound_enabled:
-    name: Detection sound enabled
-    description: 'Play exactly one sound for each new detection. Post takes precedence over person. Default: off'
+    name: Detection sound initial state
+    description: 'Initial state of the global Home Assistant sound switch on first setup. Afterwards the switch can be controlled directly in Home Assistant. Default: off'
   sound_media_player:
     name: Detection sound media player
     description: Home Assistant media_player entity, e.g. media_player.living_room.
@@ -191,3 +191,12 @@ configuration:
   sound_media_content_type:
     name: Sound media content type
     description: 'media_content_type passed to media_player.play_media. Default: music'
+  sound_time_window_enabled:
+    name: Enable sound time window
+    description: 'Only play detection sounds inside the allowed time window. Overnight windows are supported. Default: off'
+  sound_time_start:
+    name: Sound allowed from
+    description: 'Start of the allowed time window in HH:MM format. Default: 07:00'
+  sound_time_end:
+    name: Sound allowed until
+    description: 'End of the allowed time window in HH:MM format. Default: 22:00'
