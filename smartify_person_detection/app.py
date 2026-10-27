@@ -169,7 +169,9 @@ def _valid_hhmm(value, fallback):
 
 
 def _load_sound_settings():
-    defaults = {
+    # Ab 1.6.6 ist ausschliesslich die native Home-Assistant-App-Konfiguration
+    # die Quelle fuer Mediaplayer, Sounddateien und Zeitfenster.
+    return {
         "enabled": bool(SOUND_ENABLED),
         "media_player": SOUND_MEDIA_PLAYER,
         "person_sound": PERSON_SOUND,
@@ -180,38 +182,13 @@ def _load_sound_settings():
         "time_start": _valid_hhmm(SOUND_TIME_START, "07:00"),
         "time_end": _valid_hhmm(SOUND_TIME_END, "22:00"),
     }
-    try:
-        data = json.loads(SOUND_SETTINGS_FILE.read_text(encoding="utf-8"))
-        if isinstance(data, dict):
-            defaults.update({
-                key: data[key]
-                for key in defaults
-                if key in data
-            })
-    except Exception:
-        pass
-
-    defaults["enabled"] = bool(defaults.get("enabled", False))
-    defaults["media_player"] = str(defaults.get("media_player", "")).strip()
-    defaults["person_sound"] = str(defaults.get("person_sound", "")).strip()
-    defaults["post_sound"] = str(defaults.get("post_sound", "")).strip()
-    defaults["base_url"] = str(defaults.get("base_url", "")).strip().rstrip("/")
-    defaults["media_content_type"] = str(defaults.get("media_content_type", "music")).strip() or "music"
-    defaults["time_window_enabled"] = bool(defaults.get("time_window_enabled", False))
-    defaults["time_start"] = _valid_hhmm(defaults.get("time_start"), "07:00")
-    defaults["time_end"] = _valid_hhmm(defaults.get("time_end"), "22:00")
-    return defaults
-
 
 sound_settings = _load_sound_settings()
 
 
 def _save_sound_settings():
-    with sound_settings_lock:
-        SOUND_SETTINGS_FILE.write_text(
-            json.dumps(sound_settings, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
+    # Seit 1.6.6 werden Sound-Einstellungen nur ueber die native App-Konfiguration gespeichert.
+    return
 
 
 def _load_sound_switches():
@@ -2707,37 +2684,13 @@ def door_worker():
 # ---------------------------------------------------------
 
 DOOR_UI_HTML = r'''<!doctype html>
-<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Smartify Person Detection – Einstellungen</title>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Smartify Person Detection – Bildbereiche & Kalibrierung</title>
 <style>
 :root{color-scheme:dark;background:#111;color:#eee;font-family:system-ui,sans-serif}*{box-sizing:border-box}body{margin:0;padding:14px;background:#111;color:#eee}main{max-width:1100px;margin:auto}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px 16px}.panel{background:#1d1d1d;border:1px solid #333;border-radius:12px;padding:12px;margin:12px 0;line-height:1.35}.panel h3{margin:0 0 8px;font-size:1.05rem}button{font:inherit;padding:10px 14px;border:0;border-radius:9px;background:#2f6fed;color:#fff;cursor:pointer;min-height:42px}button.secondary{background:#444}button.active{outline:2px solid #fff}input{font:inherit;padding:7px;background:#222;color:#eee;border:1px solid #555;border-radius:6px;max-width:100%}code{font-size:.92em;overflow-wrap:anywhere}#msg{min-height:1.4em;color:#9fe8a7;margin:8px 0}.hint{color:#bbb;font-size:.9em;margin:8px 0;line-height:1.35}
 #stage{position:relative;width:100%;line-height:0;user-select:none;touch-action:none;background:#000;border-radius:10px;overflow:hidden;min-height:80px}#cam{display:block;width:100%;height:auto}.roi{position:absolute;box-sizing:border-box;cursor:move;touch-action:none;border:2px solid;background:rgba(255,255,255,.07);transform-origin:center center}.roi.fixed{border-color:#00e5ff;background:rgba(0,229,255,.10)}.roi.moving{border-color:#ffb300;background:rgba(255,179,0,.10)}.roi.garageFixed{border-color:#76ff03;background:rgba(118,255,3,.10)}.roi.garageMoving{border-color:#e040fb;background:rgba(224,64,251,.10)}.roi.garage2Fixed{border-color:#40c4ff;background:rgba(64,196,255,.10)}.roi.garage2Moving{border-color:#ff4081;background:rgba(255,64,129,.10)}.roi.personArea{border-color:#7c4dff;background:rgba(124,77,255,.10)}.label{position:absolute;left:2px;top:2px;line-height:1.2;font:700 11px system-ui;padding:2px 4px;border-radius:4px;color:#000;pointer-events:none}.fixed .label{background:#00e5ff}.moving .label{background:#ffb300}.garageFixed .label{background:#76ff03}.garageMoving .label{background:#e040fb}.garage2Fixed .label{background:#40c4ff}.garage2Moving .label{background:#ff4081}.personArea .label{background:#b388ff}.handle{position:absolute;width:14px;height:14px;border:0;background:transparent!important;border-radius:0;box-sizing:border-box}.nw{left:-7px;top:-7px;cursor:nwse-resize}.ne{right:-7px;top:-7px;cursor:nesw-resize}.sw{left:-7px;bottom:-7px;cursor:nesw-resize}.se{right:-7px;bottom:-7px;cursor:nwse-resize}.rotate{left:50%;top:-24px;width:18px;height:6px;transform:translateX(-50%);cursor:grab;border-radius:0;background:currentColor!important}.fixed .rotate{color:#00e5ff}.moving .rotate{color:#ffb300}.garageFixed .rotate{color:#76ff03}.garageMoving .rotate{color:#e040fb}.garage2Fixed .rotate{color:#40c4ff}.garage2Moving .rotate{color:#ff4081}.fixedTxt{color:#00e5ff}.movingTxt{color:#ffb300}.verticalFixedTxt{color:#76ff03}.verticalMovingTxt{color:#e040fb}.vertical2FixedTxt{color:#40c4ff}.vertical2MovingTxt{color:#ff4081}.personTxt{color:#b388ff}.statusline{font-size:.96rem;margin:3px 0;overflow-wrap:anywhere}@media(max-width:600px){body{padding:8px}.row button{flex:1 1 44%}.panel{padding:10px}.grid{grid-template-columns:1fr}.row label{width:100%}.row input{width:100%}}
 </style></head><body><main>
-<h2 style="margin:0 0 12px">Smartify Person Detection – Einstellungen</h2>
-<div class="panel"><h3>System & Kamera</h3><div class="grid"><div><strong>Kamera:</strong> <code id="camera">-</code></div><div><strong>Kalibrierzugriff:</strong> <span id="uitime">-</span></div><div><strong>Pause:</strong> <span id="pause">-</span></div><div><strong>Ansicht:</strong> <span id="viewName">Normalbild</span></div></div></div>
-<div class="panel"><h3>Sound & Benachrichtigung</h3>
-<div class="hint">Mediaplayer werden direkt aus Home Assistant geladen. Sounddateien werden aus <code>/local/sounds/</code> vorgeschlagen. Die drei Stummschaltungen existieren zusätzlich als echte Home-Assistant-Switches.</div>
-<div class="grid">
-<label>Mediaplayer <input id="soundPlayer" list="soundPlayers" placeholder="media_player..."><datalist id="soundPlayers"></datalist></label>
-<label>Person-Ton <input id="personSound" list="soundFiles" placeholder="/local/sounds/person.mp3"></label>
-<label>Post-Ton <input id="postSound" list="soundFiles" placeholder="/local/sounds/post.mp3"><datalist id="soundFiles"></datalist></label>
-<label>Medientyp <input id="soundContentType" value="music"></label>
-<label>Basis-URL (optional) <input id="soundBaseUrl" placeholder="http://homeassistant.local:8123"></label>
-</div>
-<div class="row">
-<label><input id="soundMaster" type="checkbox"> Sound gesamt</label>
-<label><input id="soundPersonEnabled" type="checkbox"> Person-Ton aktiv</label>
-<label><input id="soundPostEnabled" type="checkbox"> Post-Ton aktiv</label>
-</div>
-<div class="row">
-<label><input id="soundTimeEnabled" type="checkbox"> Zeitbereich aktiv</label>
-<label>Von <input id="soundTimeStart" type="time" value="07:00"></label>
-<label>Bis <input id="soundTimeEnd" type="time" value="22:00"></label>
-<strong id="soundTimeNow"></strong>
-</div>
-<div class="hint">Außerhalb des Zeitbereichs laufen Erkennung, Zähler und Snapshots normal weiter; nur die Tonausgabe bleibt stumm.</div>
-<div class="row"><button id="soundSave">Sound-Einstellungen speichern</button><button id="personSoundTest" class="secondary">Person-Ton testen</button><button id="postSoundTest" class="secondary">Post-Ton testen</button></div>
-</div>
-
+<h2 style="margin:0 0 12px">Smartify Person Detection – Bildbereiche & Kalibrierung</h2>
+<div class="panel"><h3>Kamera & Kalibrierstatus</h3><div class="grid"><div><strong>Kamera:</strong> <code id="camera">-</code></div><div><strong>Kalibrierzugriff:</strong> <span id="uitime">-</span></div><div><strong>Pause:</strong> <span id="pause">-</span></div><div><strong>Ansicht:</strong> <span id="viewName">Normalbild</span></div></div></div>
 <div class="row"><button id="reload">Aktuelles Bild laden</button><button id="edge" class="secondary">Tür-Kantenansicht</button><button id="gEdgeTop" class="secondary" style="display:none">Garage 1 Kantenansicht</button><button id="g2EdgeTop" class="secondary" style="display:none">Garage 2 Kantenansicht</button><button id="personToggle" class="secondary">Personen-Bildbereich</button></div><div id="msg" aria-live="polite"></div>
 <div id="stage"><img id="cam" alt="Aktuelles Kamerabild"><div id="fixedRoi" class="roi fixed"><span class="label">ZARGE</span><span class="handle nw" data-handle="nw"></span><span class="handle ne" data-handle="ne"></span><span class="handle sw" data-handle="sw"></span><span class="handle se" data-handle="se"></span><span class="handle rotate" data-handle="rotate"></span></div><div id="movingRoi" class="roi moving"><span class="label">TÜR</span><span class="handle nw" data-handle="nw"></span><span class="handle ne" data-handle="ne"></span><span class="handle sw" data-handle="sw"></span><span class="handle se" data-handle="se"></span><span class="handle rotate" data-handle="rotate"></span></div><div id="gFixedRoi" class="roi garageFixed" style="display:none"><span class="label">V-FEST</span><span class="handle nw" data-handle="nw"></span><span class="handle ne" data-handle="ne"></span><span class="handle sw" data-handle="sw"></span><span class="handle se" data-handle="se"></span><span class="handle rotate" data-handle="rotate"></span></div><div id="gMovingRoi" class="roi garageMoving" style="display:none"><span class="label">V-BEWEGT</span><span class="handle nw" data-handle="nw"></span><span class="handle ne" data-handle="ne"></span><span class="handle sw" data-handle="sw"></span><span class="handle se" data-handle="se"></span><span class="handle rotate" data-handle="rotate"></span></div><div id="g2FixedRoi" class="roi garage2Fixed" style="display:none"><span class="label">G2-FEST</span><span class="handle nw" data-handle="nw"></span><span class="handle ne" data-handle="ne"></span><span class="handle sw" data-handle="sw"></span><span class="handle se" data-handle="se"></span><span class="handle rotate" data-handle="rotate"></span></div><div id="g2MovingRoi" class="roi garage2Moving" style="display:none"><span class="label">G2-BEWEGT</span><span class="handle nw" data-handle="nw"></span><span class="handle ne" data-handle="ne"></span><span class="handle sw" data-handle="sw"></span><span class="handle se" data-handle="se"></span><span class="handle rotate" data-handle="rotate"></span></div><div id="personRoi" class="roi personArea" style="display:none"><span class="label">PERSON / POST</span><span class="handle nw" data-handle="nw"></span><span class="handle ne" data-handle="ne"></span><span class="handle sw" data-handle="sw"></span><span class="handle se" data-handle="se"></span></div></div>
 <div class="hint">ROI verschieben: im Rechteck ziehen · Größe: direkt an den Ecken ziehen; die Eckgriffe bleiben unsichtbar. Tür- und Vertikal-ROI können zusätzlich am kleinen Strich oberhalb um ±45° gedreht werden.</div>
@@ -2759,26 +2712,18 @@ function stagePoint(ev){const q=stage.getBoundingClientRect();return{x:ev.client
 window.addEventListener('pointermove',ev=>{if(!drag)return;const p=stagePoint(ev),r=rois[drag.name],s=drag.startR,W=p.W,H=p.H;if(drag.handle==='rotate'&&drag.name!=='person'){const cx=s.cx*W,cy=s.cy*H;let a=Math.atan2(p.y-cy,p.x-cx)*180/Math.PI+90;while(a>180)a-=360;while(a<-180)a+=360;r.angle=clamp(a,-45,45)}else if(drag.handle==='move'){r.cx=clamp(s.cx+(p.x-drag.start.x)/W,s.w/2,1-s.w/2);r.cy=clamp(s.cy+(p.y-drag.start.y)/H,s.h/2,1-s.h/2)}else{const a=(drag.name==='person'?0:s.angle)*Math.PI/180,dx=p.x-drag.start.x,dy=p.y-drag.start.y;const lx=dx*Math.cos(a)+dy*Math.sin(a),ly=-dx*Math.sin(a)+dy*Math.cos(a);const sx=drag.handle.includes('e')?1:-1,sy=drag.handle.includes('s')?1:-1;r.w=clamp(s.w+2*sx*lx/W,.01,.98);r.h=clamp(s.h+2*sy*ly/H,.01,.98);r.cx=clamp(s.cx,r.w/2,1-r.w/2);r.cy=clamp(s.cy,r.h/2,1-r.h/2)}render()});window.addEventListener('pointerup',()=>drag=null);window.addEventListener('pointercancel',()=>drag=null);
 async function jsonFetch(url,opt={}){const r=await fetch(url,opt),j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('HTTP '+r.status));if(j.calibration_ui_remaining_seconds!==undefined)startUiTimer(j.calibration_ui_remaining_seconds);return j}
 async function loadStatus(){const s=await jsonFetch(endpoint('status'));if(s.rois){rois.fixed=s.rois.fixed;rois.moving=s.rois.moving}if(s.vertical_rois){rois.gfixed=s.vertical_rois.fixed;rois.gmoving=s.vertical_rois.moving}if(s.vertical2_rois){rois.g2fixed=s.vertical2_rois.fixed;rois.g2moving=s.vertical2_rois.moving}if(s.person_roi)rois.person=s.person_roi;verticalEnabled=!!s.vertical_enabled;vertical2Enabled=!!s.vertical2_enabled;$('garagePanel').style.display=verticalEnabled?'block':'none';$('gEdgeTop').style.display=verticalEnabled?'inline-block':'none';$('garage2Panel').style.display=vertical2Enabled?'block':'none';$('g2EdgeTop').style.display=vertical2Enabled?'inline-block':'none';$('doorName').value=s.door_name||'';$('doorEntity').value=s.door_entity_id||'';$('verticalName').value=s.vertical_name||'';$('verticalEntity').value=s.vertical_entity_id||'';$('vertical2Name').value=s.vertical2_name||'';$('vertical2Entity').value=s.vertical2_entity_id||'';$('camera').textContent=s.camera_entity;$('calibrated').textContent=s.calibrated?'ja':'nein';$('doorstate').textContent=s.door_open===true?'OFFEN':(s.door_open===false?'geschlossen':'-');$('edges').textContent=(s.last_fixed_x==null||s.last_moving_x==null)?'-':`Zarge ${Number(s.last_fixed_x).toFixed(2)} px · Tür ${Number(s.last_moving_x).toFixed(2)} px`;$('score').textContent=s.last_shift_px==null?'-':`${Number(s.last_shift_px).toFixed(2)} px`;$('gap').textContent=s.last_gap_px==null?'-':`${Number(s.last_gap_px).toFixed(2)} px / Ref ${s.reference_gap_px==null?'-':Number(s.reference_gap_px).toFixed(2)+' px'}`;$('quality').textContent=s.edge_quality==null?'-':Number(s.edge_quality).toFixed(2);$('tracking').textContent=(s.fixed_tracked==null||s.moving_tracked==null)?'-':((s.fixed_tracked&&s.moving_tracked)?'OK':('KANTE VERLOREN'+(s.tracking_reason?' · '+s.tracking_reason:'')));$('pause').textContent=`${Number(s.pause_remaining_seconds||0).toFixed(0)} s`;$('gCalibrated').textContent=s.vertical_calibrated?'ja':'nein';$('gDoorState').textContent=s.vertical_open===true?'OFFEN':s.vertical_open===false?'geschlossen':'-';$('gShift').textContent=s.vertical_shift_px==null?'-':Number(s.vertical_shift_px).toFixed(2)+' px';$('gGap').textContent=s.vertical_gap_px==null?'-':`${Number(s.vertical_gap_px).toFixed(2)} px / Ref ${s.vertical_reference_gap_px==null?'-':Number(s.vertical_reference_gap_px).toFixed(2)+' px'}`;$('gQuality').textContent=s.vertical_quality==null?'-':Number(s.vertical_quality).toFixed(2);$('gTracking').textContent=(s.vertical_fixed_tracked==null||s.vertical_moving_tracked==null)?'-':((s.vertical_fixed_tracked&&s.vertical_moving_tracked)?'OK':('KANTE VERLOREN'+(s.vertical_tracking_reason?' · '+s.vertical_tracking_reason:'')));$('gLast').textContent=s.vertical_last_check||'-';$('gError').textContent=s.vertical_last_error?('Fehler: '+s.vertical_last_error):'';$('g2Calibrated').textContent=s.vertical2_calibrated?'ja':'nein';$('g2DoorState').textContent=s.vertical2_open===true?'OFFEN':s.vertical2_open===false?'geschlossen':'-';$('g2Shift').textContent=s.vertical2_shift_px==null?'-':Number(s.vertical2_shift_px).toFixed(2)+' px';$('g2Gap').textContent=s.vertical2_gap_px==null?'-':`${Number(s.vertical2_gap_px).toFixed(2)} px / Ref ${s.vertical2_reference_gap_px==null?'-':Number(s.vertical2_reference_gap_px).toFixed(2)+' px'}`;$('g2Quality').textContent=s.vertical2_quality==null?'-':Number(s.vertical2_quality).toFixed(2);$('g2Tracking').textContent=(s.vertical2_fixed_tracked==null||s.vertical2_moving_tracked==null)?'-':((s.vertical2_fixed_tracked&&s.vertical2_moving_tracked)?'OK':('KANTE VERLOREN'+(s.vertical2_tracking_reason?' · '+s.vertical2_tracking_reason:'')));$('g2Last').textContent=s.vertical2_last_check||'-';$('g2Error').textContent=s.vertical2_last_error?('Fehler: '+s.vertical2_last_error):'';if(s.last_error)msg.textContent='Letzter Fehler: '+s.last_error;render()}
-async function loadSoundOptions(){const d=await jsonFetch(endpoint('sound_options'));const st=d.settings||{},sw=d.switches||{};$('soundPlayer').value=st.media_player||'';$('personSound').value=st.person_sound||'';$('postSound').value=st.post_sound||'';$('soundContentType').value=st.media_content_type||'music';$('soundBaseUrl').value=st.base_url||'';$('soundTimeEnabled').checked=!!st.time_window_enabled;$('soundTimeStart').value=st.time_start||'07:00';$('soundTimeEnd').value=st.time_end||'22:00';$('soundMaster').checked=!!sw.master;$('soundPersonEnabled').checked=sw.person!==false;$('soundPostEnabled').checked=sw.post!==false;$('soundTimeNow').textContent=st.time_window_enabled?(d.time_allowed_now?'aktuell erlaubt':'aktuell stumm'):'ganztags erlaubt';const mpl=$('soundPlayers');mpl.innerHTML='';(d.media_players||[]).forEach(x=>{const o=document.createElement('option');o.value=x.entity_id;o.label=x.name;mpl.appendChild(o)});const fl=$('soundFiles');fl.innerHTML='';(d.sound_files||[]).forEach(x=>{const o=document.createElement('option');o.value=x;fl.appendChild(o)})}
-async function setSoundSwitch(kind,enabled){await jsonFetch(endpoint('sound_switch'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind,enabled})})}
-$('soundMaster').addEventListener('change',async e=>{try{await setSoundSwitch('master',e.target.checked);msg.textContent='Sound gesamt '+(e.target.checked?'eingeschaltet.':'stummgeschaltet.')}catch(err){msg.textContent='Fehler: '+err.message;await loadSoundOptions()}});
-$('soundPersonEnabled').addEventListener('change',async e=>{try{await setSoundSwitch('person',e.target.checked);msg.textContent='Person-Ton '+(e.target.checked?'eingeschaltet.':'stummgeschaltet.')}catch(err){msg.textContent='Fehler: '+err.message;await loadSoundOptions()}});
-$('soundPostEnabled').addEventListener('change',async e=>{try{await setSoundSwitch('post',e.target.checked);msg.textContent='Post-Ton '+(e.target.checked?'eingeschaltet.':'stummgeschaltet.')}catch(err){msg.textContent='Fehler: '+err.message;await loadSoundOptions()}});
-$('soundSave').addEventListener('click',async()=>{try{await jsonFetch(endpoint('sound_settings'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({media_player:$('soundPlayer').value,person_sound:$('personSound').value,post_sound:$('postSound').value,media_content_type:$('soundContentType').value,base_url:$('soundBaseUrl').value,time_window_enabled:$('soundTimeEnabled').checked,time_start:$('soundTimeStart').value,time_end:$('soundTimeEnd').value})});msg.textContent='Sound-Einstellungen gespeichert.';await loadSoundOptions()}catch(e){msg.textContent='Fehler: '+e.message}});
-$('personSoundTest').addEventListener('click',async()=>{try{await jsonFetch(endpoint('sound_test'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:'person'})});msg.textContent='Person-Ton getestet.'}catch(e){msg.textContent='Fehler: '+e.message}});
-$('postSoundTest').addEventListener('click',async()=>{try{await jsonFetch(endpoint('sound_test'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:'post'})});msg.textContent='Post-Ton getestet.'}catch(e){msg.textContent='Fehler: '+e.message}});
 function imageUrl(){const q=encodeURIComponent(JSON.stringify({fixed:rois.fixed,moving:rois.moving})),vq=encodeURIComponent(JSON.stringify({fixed:rois.gfixed,moving:rois.gmoving})),v2q=encodeURIComponent(JSON.stringify({fixed:rois.g2fixed,moving:rois.g2moving}));if(viewMode==='door-edge')return endpoint('edge_image')+'?t='+Date.now()+'&rois='+q;if(viewMode==='vertical-edge')return endpoint('vertical_edge_image')+'?t='+Date.now()+'&rois='+vq;if(viewMode==='vertical2-edge')return endpoint('vertical2_edge_image')+'?t='+Date.now()+'&rois='+v2q;return endpoint('image')+'?t='+Date.now()}function reloadImage(){img.src=imageUrl()}
 $('reload').addEventListener('click',()=>{viewMode='normal';overlays();reloadImage()});$('edge').addEventListener('click',()=>{viewMode=viewMode==='door-edge'?'normal':'door-edge';overlays();reloadImage()});function toggleVerticalEdge(){if(!verticalEnabled)return;viewMode=viewMode==='vertical-edge'?'normal':'vertical-edge';overlays();reloadImage()}$('gEdge').addEventListener('click',toggleVerticalEdge);$('gEdgeTop').addEventListener('click',toggleVerticalEdge);function toggleVertical2Edge(){if(!vertical2Enabled)return;viewMode=viewMode==='vertical2-edge'?'normal':'vertical2-edge';overlays();reloadImage()}$('g2Edge').addEventListener('click',toggleVertical2Edge);$('g2EdgeTop').addEventListener('click',toggleVertical2Edge);
 function togglePerson(){viewMode='normal';personVisible=!personVisible;$('personToggle').classList.toggle('active',personVisible);$('personShow').classList.toggle('active',personVisible);$('personToggle').textContent=personVisible?'Personen-Bildbereich ausblenden':'Personen-Bildbereich';$('personShow').textContent=personVisible?'Bildbereich ausblenden':'Bildbereich einblenden';overlays();reloadImage()}$('personToggle').addEventListener('click',togglePerson);$('personShow').addEventListener('click',togglePerson);
 $('save').addEventListener('click',async()=>{try{await jsonFetch(endpoint('roi'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fixed:rois.fixed,moving:rois.moving})});msg.textContent='Beide drehbaren Tür-ROI gespeichert. Bitte Tür geschlossen neu kalibrieren.';await loadStatus();reloadImage()}catch(e){msg.textContent='Fehler: '+e.message}});$('calibrate').addEventListener('click',async()=>{try{await jsonFetch(endpoint('calibrate'),{method:'POST'});msg.textContent='Geschlossene Tür wurde als Referenz gespeichert.';await loadStatus();reloadImage()}catch(e){msg.textContent='Fehler: '+e.message}});$('check').addEventListener('click',async()=>{try{const s=await jsonFetch(endpoint('check'),{method:'POST'});msg.textContent='Prüfung: '+(s.door_open?'OFFEN':'geschlossen')+' · Verschiebung '+Number(s.shift_px).toFixed(2)+' px';await loadStatus();if(viewMode==='door-edge')reloadImage()}catch(e){msg.textContent='Fehler: '+e.message}});
 $('gSave').addEventListener('click',async()=>{try{await jsonFetch(endpoint('vertical_roi'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fixed:rois.gfixed,moving:rois.gmoving})});msg.textContent='Vertikale ROI gespeichert. Bitte neu kalibrieren.';await loadStatus();if(viewMode==='vertical-edge')reloadImage()}catch(e){msg.textContent='Fehler: '+e.message}});$('gCal').addEventListener('click',async()=>{try{await jsonFetch(endpoint('vertical_calibrate'),{method:'POST'});msg.textContent='Vertikale Referenz kalibriert.';await loadStatus();if(viewMode==='vertical-edge')reloadImage()}catch(e){msg.textContent='Fehler: '+e.message}});$('gCheck').addEventListener('click',async()=>{try{const r=await jsonFetch(endpoint('vertical_check'),{method:'POST'});msg.textContent='Vertikale Prüfung: '+(r.open?'OFFEN':'geschlossen')+' · Verschiebung '+Number(r.shift_px).toFixed(2)+' px';await loadStatus();if(viewMode==='vertical-edge')reloadImage()}catch(e){msg.textContent='Fehler: '+e.message}});
 $('g2Save').addEventListener('click',async()=>{try{await jsonFetch(endpoint('vertical2_roi'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fixed:rois.g2fixed,moving:rois.g2moving})});msg.textContent='Garage-2-ROI gespeichert. Bitte neu kalibrieren.';await loadStatus();if(viewMode==='vertical2-edge')reloadImage()}catch(e){msg.textContent='Fehler: '+e.message}});$('g2Cal').addEventListener('click',async()=>{try{await jsonFetch(endpoint('vertical2_calibrate'),{method:'POST'});msg.textContent='Garage 2 Referenz kalibriert.';await loadStatus();if(viewMode==='vertical2-edge')reloadImage()}catch(e){msg.textContent='Fehler: '+e.message}});$('g2Check').addEventListener('click',async()=>{try{const r=await jsonFetch(endpoint('vertical2_check'),{method:'POST'});msg.textContent='Garage 2 Prüfung: '+(r.open?'OFFEN':'geschlossen')+' · Verschiebung '+Number(r.shift_px).toFixed(2)+' px';await loadStatus();if(viewMode==='vertical2-edge')reloadImage()}catch(e){msg.textContent='Fehler: '+e.message}});$('personSave').addEventListener('click',async()=>{try{const r=await jsonFetch(endpoint('person_roi'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(rois.person)});rois.person=r.person_roi||rois.person;msg.textContent='Personen-/Postboten-Bildbereich gespeichert. Er gilt ab dem nächsten 3er-Batch.';render()}catch(e){msg.textContent='Fehler: '+e.message}});
-img.addEventListener('load',render);img.addEventListener('error',()=>{msg.textContent='Bild konnte nicht geladen werden. Bitte Ansicht wechseln oder erneut laden.'});window.addEventListener('resize',render);loadStatus().then(async()=>{await loadSoundOptions();reloadImage()}).catch(e=>msg.textContent='Fehler: '+e.message)
+img.addEventListener('load',render);img.addEventListener('error',()=>{msg.textContent='Bild konnte nicht geladen werden. Bitte Ansicht wechseln oder erneut laden.'});window.addEventListener('resize',render);loadStatus().then(reloadImage).catch(e=>msg.textContent='Fehler: '+e.message)
 })();</script></body></html>'''
 
 
 class DoorCalibrationHandler(BaseHTTPRequestHandler):
-    server_version = "SmartifyPersonDetectionUI/1.6.5"
+    server_version = "SmartifyPersonDetectionUI/1.6.6"
 
     def log_message(self, fmt, *args):
         print(
@@ -2908,15 +2853,6 @@ class DoorCalibrationHandler(BaseHTTPRequestHandler):
             )
             return
 
-        if path.endswith("/api/sound_options") or path == "/api/sound_options":
-            if not self._require_active_ui():
-                return
-            try:
-                self._json(sound_options_payload())
-            except Exception as e:
-                self._json({"error": str(e)}, 500)
-            return
-
         if path.endswith("/api/edge_image") or path == "/api/edge_image":
             if not self._require_active_ui():
                 return
@@ -3020,28 +2956,6 @@ class DoorCalibrationHandler(BaseHTTPRequestHandler):
         path = self._path()
 
         try:
-            if path.endswith("/api/sound_settings") or path == "/api/sound_settings":
-                update_sound_settings(self._body_json())
-                self._json({"ok": True, **sound_options_payload()})
-                return
-
-            if path.endswith("/api/sound_switch") or path == "/api/sound_switch":
-                data = self._body_json()
-                kind = str(data.get("kind", "")).strip().lower()
-                enabled = bool(data.get("enabled", False))
-                set_sound_switch(kind, enabled)
-                self._json({"ok": True, "switches": sound_options_payload()["switches"]})
-                return
-
-            if path.endswith("/api/sound_test") or path == "/api/sound_test":
-                data = self._body_json()
-                kind = str(data.get("kind", "")).strip().lower()
-                if kind not in ("person", "post"):
-                    raise ValueError("Sound-Test kennt nur person oder post.")
-                play_detection_sound(kind, force=True)
-                self._json({"ok": True})
-                return
-
             if path.endswith("/api/roi") or path == "/api/roi":
                 data = self._body_json()
 
