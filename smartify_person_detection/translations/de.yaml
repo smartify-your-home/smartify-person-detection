@@ -55,7 +55,7 @@ configuration:
     description: 'Optionaler Reset der Post-/Person-Binary-Sensoren beim Tageswechsel. Standard: aus'
   rtsp_enabled:
     name: RTSP-Modus aktiv
-    description: 'Direkten RTSP-Ringpuffer fuer Ereignisbilder verwenden. Standard: ein'
+    description: 'Direkten RTSP-Ringpuffer fuer Ereignisbilder verwenden. Standard: aus'
   rtsp_url:
     name: RTSP-URL
     description: 'Direkte RTSP-Adresse der Kamera. Standard: rtsp://camera.local:554/stream'
@@ -103,7 +103,7 @@ configuration:
     description: 'Haustuer/Garage bevorzugt aus dem aktuellen RTSP-Frame pruefen; camera_proxy bleibt Fallback. Standard: aus'
   door_enabled:
     name: Haustürerkennung aktiv
-    description: 'Horizontale Haustür-Kantenmessung aktivieren. Standard: ein'
+    description: 'Horizontale Haustür-Kantenmessung aktivieren. Standard: aus'
   door_camera_entity:
     name: Kamera-Entity
     description: 'Kamera für Tür- und Garagenprüfungen. Standard: camera.front_door'
