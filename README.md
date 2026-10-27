@@ -35,8 +35,11 @@ kopiert und ist in Home Assistant über
 
 erreichbar.
 
-Die Slideshow zeigt bis zu 100 Ringpufferbilder aus `/local/cam_pt2_motion/`, sortiert sie nach
-`Last-Modified` und verwendet einen neutralen mittelgrauen Hintergrund.
+Die Slideshow übernimmt den unter `image_dir` konfigurierten Bildordner automatisch. Liegt
+`image_dir` z. B. auf `/homeassistant/www/cam_pt2_motion`, verwendet die Slideshow automatisch
+`/local/cam_pt2_motion/`. Auch die Anzahl der Ringpufferbilder wird aus `rtsp_max_files`
+übernommen (maximal 100). Die Bilder werden nach `Last-Modified` sortiert und die Slideshow
+verwendet einen neutralen mittelgrauen Hintergrund.
 
 ## Erkennungston
 
@@ -66,4 +69,4 @@ gespeichert und erscheint damit als `Last-Modified`.
 
 ## Version
 
-Aktuell: **1.6.1**
+Aktuell: **1.6.2**
