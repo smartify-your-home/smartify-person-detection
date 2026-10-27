@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.4
+
+- Ingress-Seite von „Kalibrierung“ auf **Smartify Person Detection – Einstellungen** umbenannt
+- Kopfbereich der Weboberfläche klarer strukturiert
+- System-/Kamerastatus und Sound-Konfiguration in einer gemeinsamen Einstellungsoberfläche gebündelt
+
 ## 1.6.3
 
 - drei persistente Home-Assistant-Sound-Schalter per MQTT Discovery: Gesamt, Person und Post
