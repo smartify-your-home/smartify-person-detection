@@ -93,9 +93,10 @@
   <div id="gallery"></div>
 
   <script>
-    const IMAGE_COUNT = 100;
-    const IMAGE_BASE_PATH = "/local/cam_pt2_motion/";
-    const INDEX_FILE = IMAGE_BASE_PATH + "index.json";
+    let IMAGE_COUNT = 100;
+    let IMAGE_BASE_PATH = "";
+    let INDEX_FILE = "";
+    const CONFIG_FILE = "/local/slideshow_persondetection_config.json";
     const REFRESH_SECONDS = 60;
     const MAX_PARALLEL = 6;
     const EAGER_IMAGES = 4;
@@ -113,6 +114,42 @@
         day: "2-digit", month: "2-digit", year: "numeric",
         hour: "2-digit", minute: "2-digit", second: "2-digit"
       });
+    }
+
+    async function loadConfig() {
+      try {
+        const r = await fetch(CONFIG_FILE + "?t=" + Date.now(), { cache: "no-store" });
+        if (!r.ok) throw new Error("Konfiguration nicht erreichbar");
+        const data = await r.json();
+
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
+        if (!data.image_base_path || !data.image_base_path.startsWith("/local/")) {
+          throw new Error("Ungültiger Bildpfad in der Slideshow-Konfiguration");
+        }
+
+        IMAGE_BASE_PATH = data.image_base_path.endsWith("/")
+          ? data.image_base_path
+          : data.image_base_path + "/";
+
+        const configuredCount = Number(data.image_count);
+        IMAGE_COUNT = Number.isFinite(configuredCount)
+          ? Math.max(1, Math.min(100, Math.trunc(configuredCount)))
+          : 100;
+
+        INDEX_FILE = IMAGE_BASE_PATH + "index.json";
+        return true;
+      } catch (error) {
+        statusEl.textContent = "Konfigurationsfehler";
+        gallery.innerHTML = "";
+        const div = document.createElement("div");
+        div.className = "empty";
+        div.textContent = "Slideshow-Konfiguration konnte nicht geladen werden: " + error.message;
+        gallery.appendChild(div);
+        return false;
+      }
     }
 
     async function loadFromIndex() {
@@ -237,8 +274,14 @@
       }
     }
 
-    refresh();
-    setInterval(refresh, REFRESH_SECONDS * 1000);
+    async function start() {
+      if (await loadConfig()) {
+        await refresh();
+        setInterval(refresh, REFRESH_SECONDS * 1000);
+      }
+    }
+
+    start();
 
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) refresh();
