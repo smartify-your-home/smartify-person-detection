@@ -174,8 +174,8 @@ configuration:
     name: Garagentor 2 geschlossen bis
     description: 'Vertikale Verschiebung bis zu der GESCHLOSSEN gilt. Standard: 1.5 px'
   sound_enabled:
-    name: Erkennungston aktiv
-    description: 'Spielt bei jeder neuen Erkennung genau einen Ton ab. Post hat Vorrang vor Person. Standard: aus'
+    name: Erkennungston Startzustand
+    description: 'Startzustand des globalen Sound-Schalters bei der ersten Einrichtung. Danach kann der Schalter direkt in Home Assistant bedient werden. Standard: aus'
   sound_media_player:
     name: Mediaplayer für Erkennungston
     description: Home-Assistant-Entity, z. B. media_player.wohnzimmer. Leer = keine Wiedergabe.
@@ -191,3 +191,12 @@ configuration:
   sound_media_content_type:
     name: Sound Medientyp
     description: 'media_content_type für media_player.play_media. Standard: music'
+  sound_time_window_enabled:
+    name: Sound-Zeitbereich aktiv
+    description: 'Ton nur innerhalb des erlaubten Zeitbereichs ausgeben. Zeitfenster über Mitternacht werden unterstützt. Standard: aus'
+  sound_time_start:
+    name: Sound erlaubt ab
+    description: 'Beginn des erlaubten Zeitbereichs im Format HH:MM. Standard: 07:00'
+  sound_time_end:
+    name: Sound erlaubt bis
+    description: 'Ende des erlaubten Zeitbereichs im Format HH:MM. Standard: 22:00'
