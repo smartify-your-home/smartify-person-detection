@@ -16,6 +16,13 @@ Home Assistant **App Store** als benutzerdefiniertes App-Repository installiert:
 > HACS installiert keine Supervisor-Apps. Die Repository-Struktur ist deshalb für den
 > Home-Assistant-App-Store aufgebaut; HACS ist für diesen App-Typ nicht der Installer.
 
+## Wechsel von älteren „Postbote Detector“-Installationen
+
+Der App-Slug wurde auf `smartify_person_detection` umbenannt. Home Assistant behandelt die App
+deshalb als **neue App** und übernimmt den alten `/data`-Bereich nicht automatisch. Vor dem
+Entfernen einer älteren Installation sollten insbesondere Tür-/Garagentor-Kalibrierungen und
+weitere gewünschte Einstellungen gesichert bzw. in der neuen App neu gesetzt werden.
+
 ## Erkennungston
 
 Optional kann bei jeder neuen Erkennung ein Home-Assistant-Mediaplayer einen Ton abspielen.
