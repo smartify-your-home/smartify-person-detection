@@ -2410,7 +2410,7 @@ img.addEventListener('load',render);img.addEventListener('error',()=>{msg.textCo
 
 
 class DoorCalibrationHandler(BaseHTTPRequestHandler):
-    server_version = "SmartifyPersonDetectionUI/1.6.1"
+    server_version = "SmartifyPersonDetectionUI/1.6.2"
 
     def log_message(self, fmt, *args):
         print(
