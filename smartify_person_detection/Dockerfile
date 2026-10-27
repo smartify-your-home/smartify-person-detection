@@ -20,5 +20,6 @@ COPY run.sh /run.sh
 RUN chmod +x /run.sh
 COPY rtsp_source.py /app/rtsp_source.py
 COPY app.py /app/app.py
-LABEL io.hass.version="1.6.0" io.hass.type="addon" io.hass.arch="amd64"
+COPY slideshow_persondetection.html /app/slideshow_persondetection.html
+LABEL io.hass.version="1.6.1" io.hass.type="addon" io.hass.arch="amd64"
 CMD ["/run.sh"]
