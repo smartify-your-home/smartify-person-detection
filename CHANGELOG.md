@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.6.3
+
+- drei persistente Home-Assistant-Sound-Schalter per MQTT Discovery: Gesamt, Person und Post
+- Person- und Post-Ton getrennt stummschaltbar
+- optionaler erlaubter Sound-Zeitbereich mit Start-/Endzeit
+- Zeitfenster über Mitternacht werden unterstützt
+- Mediaplayer-Vorschläge direkt aus den vorhandenen `media_player.*`-Entities
+- Sounddatei-Vorschläge aus `/local/sounds/` (MP3, WAV, OGG, M4A, AAC, FLAC)
+- Person- und Post-Ton direkt aus der Ingress-Weboberfläche testbar
+- Sound-Einstellungen können in der Ingress-Weboberfläche gespeichert werden
+
 ## 1.6.2
 
 - Slideshow übernimmt den konfigurierten `image_dir` automatisch
