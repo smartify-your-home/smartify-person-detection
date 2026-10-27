@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.6.5
+
+- Sound-Bereich aus den Tür-/Garagenabschnitten herausgenommen und direkt unter **System & Kamera** platziert
+- drei Sound-Schalter mit festen Standard-Entity-IDs veröffentlicht
+- MQTT-Discovery-Veröffentlichung der Sound-Schalter wird jetzt bestätigt und im Log protokolliert
+- Beschriftungen der Sound-Schalter vereinheitlicht: **Sound gesamt**, **Person-Ton**, **Post-Ton**
+
 ## 1.6.4
 
 - Ingress-Seite von „Kalibrierung“ auf **Smartify Person Detection – Einstellungen** umbenannt
