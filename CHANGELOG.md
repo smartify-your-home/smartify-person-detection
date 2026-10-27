@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.6.1
+
+- integrierte Bildanzeige **Slideshow Persondetection**
+- automatische Installation nach `/local/slideshow_persondetection.html`
+- neutraler mittelgrauer Hintergrund für helle und dunkle Home-Assistant-Themes
+- Slideshow auf Ringpuffer `rtsp_000.jpg` bis `rtsp_099.jpg` angepasst
+
 ## 1.6.0
 
 - Rebranding auf **Smartify Person Detection**
