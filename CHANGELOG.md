@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.7
+
+- Home-Assistant-App-Changelog direkt im Add-on-Ordner ergänzt, damit der Changelog auch auf der App-Seite verfügbar ist
+- `DOCS.md` und `README.md` im Add-on-Ordner ergänzt, damit Dokumentation und Hinweise direkt bei der App mitgeliefert werden
+- Root-Dokumentation und Add-on-Dokumentation auf denselben Release-Stand gebracht
+
 ## 1.6.6
 
 - Sound-Konfiguration aus der ROI-/Kalibrieroberfläche entfernt
