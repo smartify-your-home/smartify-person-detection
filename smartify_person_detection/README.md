@@ -1,0 +1,98 @@
+# Smartify Person Detection
+
+Lokale Personen- und Post-Erkennung für Home Assistant mit YOLO11/ONNX, RTSP-Ringpuffer,
+MQTT Discovery und optionaler Tür-/Garagentor-Kantenerkennung.
+
+## Installation
+
+Diese Software ist eine **Home-Assistant-App (Supervisor Add-on)**. Sie wird daher über den
+Home Assistant **App Store** als benutzerdefiniertes App-Repository installiert:
+
+1. **Einstellungen → Apps → App Store**
+2. Menü **Repositories**
+3. `https://github.com/smartify-your-home/smartify-person-detection` hinzufügen
+4. **Smartify Person Detection** installieren
+
+> HACS installiert keine Supervisor-Apps. Die Repository-Struktur ist deshalb für den
+> Home-Assistant-App-Store aufgebaut; HACS ist für diesen App-Typ nicht der Installer.
+
+## Wechsel von älteren „Postbote Detector“-Installationen
+
+Der App-Slug wurde auf `smartify_person_detection` umbenannt. Home Assistant behandelt die App
+deshalb als **neue App** und übernimmt den alten `/data`-Bereich nicht automatisch. Vor dem
+Entfernen einer älteren Installation sollten insbesondere Tür-/Garagentor-Kalibrierungen und
+weitere gewünschte Einstellungen gesichert bzw. in der neuen App neu gesetzt werden.
+
+## Slideshow Persondetection
+
+Beim Start der App wird die mitgelieferte Bildanzeige automatisch nach
+
+`/homeassistant/www/slideshow_persondetection.html`
+
+kopiert und ist in Home Assistant über
+
+`/local/slideshow_persondetection.html`
+
+erreichbar.
+
+Die Slideshow übernimmt den unter `image_dir` konfigurierten Bildordner automatisch. Liegt
+`image_dir` z. B. auf `/homeassistant/www/cam_pt2_motion`, verwendet die Slideshow automatisch
+`/local/cam_pt2_motion/`. Auch die Anzahl der Ringpufferbilder wird aus `rtsp_max_files`
+übernommen (maximal 100). Die Bilder werden nach `Last-Modified` sortiert und die Slideshow
+verwendet einen neutralen mittelgrauen Hintergrund.
+
+## Erkennungston
+
+Die Sound-Konfiguration befindet sich auf der normalen **Konfiguration**-Seite der Home-Assistant-App,
+also dort, wo auch RTSP, MQTT, Tür- und weitere App-Optionen eingestellt werden.
+
+Die Sound-Optionen stehen dort zusammenhängend in dieser Reihenfolge:
+
+- `sound_enabled` – Startzustand des globalen Sound-Schalters
+- `sound_media_player` – gewünschte `media_player.*`-Entity
+- `person_sound` – z. B. `/local/sounds/person.mp3`
+- `post_sound` – z. B. `/local/sounds/post.mp3`
+- `sound_time_window_enabled` – Zeitfenster aktivieren
+- `sound_time_start` / `sound_time_end`
+- `sound_media_content_type`
+- `sound_base_url` – optional
+
+Ein Post-Treffer ist zugleich eine Person; pro Ereignis wird trotzdem nur **ein** Ton ausgegeben,
+wobei der **Post-Ton Vorrang** hat. Zeitfenster über Mitternacht, z. B. `22:00` bis `07:00`,
+werden unterstützt.
+
+Die native Supervisor-App-Konfiguration kann keine dynamischen Vorschlagslisten aus den aktuell
+vorhandenen Home-Assistant-Entities oder aus dem Dateisystem erzeugen. Deshalb werden Mediaplayer
+und Sounddateien dort als Textfelder eingetragen. Die Beschreibungen enthalten passende Beispiele.
+
+### Sound-Schalter in Home Assistant
+
+Über MQTT Discovery werden drei Schalter mit festen Standard-Entity-IDs angelegt:
+
+- `switch.smartify_person_detection_sound` – Sound gesamt
+- `switch.smartify_person_detection_person_sound` – Person-Ton
+- `switch.smartify_person_detection_post_sound` – Post-Ton
+
+Damit kann der gesamte Sound oder Person/Post getrennt stummgeschaltet werden. Die Schalterzustände
+werden persistent gespeichert und können direkt in Dashboards, Szenen oder Automationen verwendet werden.
+
+## Automatische Resets
+
+Automatische Timer-Resets für Person/Post sowie der Binary-Reset um Mitternacht sind
+standardmäßig **deaktiviert**. Die Optionen können einzeln aktiviert werden.
+
+## RTSP-Ringpuffer
+
+Standardmäßig werden bis zu **100** Bilder als stabile Dateien
+`rtsp_000.jpg` bis `rtsp_099.jpg` geführt. Die tatsächliche Frame-Zeit wird als Datei-mtime
+gespeichert und erscheint damit als `Last-Modified`.
+
+## Weboberfläche
+
+Die Ingress-Weboberfläche ist ausschließlich für **Bildbereiche und Kalibrierung** zuständig:
+Kamerabild, Personen-ROI, Haustür sowie optionale Garagentor-Kantenmessungen. Allgemeine
+App-Konfiguration wie Sound, RTSP und MQTT gehört nicht in dieses Menü.
+
+## Version
+
+Aktuell: **1.6.7**
