@@ -178,13 +178,13 @@ configuration:
     description: 'Initial state of the global Home Assistant sound switch on first setup. Afterwards the switch can be controlled directly in Home Assistant. Default: off'
   sound_media_player:
     name: Detection sound media player
-    description: Home Assistant media_player entity, e.g. media_player.living_room.
+    description: Enter a Home Assistant media_player entity manually, e.g. media_player.living_room. The native app configuration cannot provide a dynamic entity list.
   person_sound:
     name: Person sound
-    description: Path or URL for person detections, e.g. /local/sounds/person.mp3.
+    description: Path or URL for person detections, e.g. /local/sounds/person.mp3. Files in /homeassistant/www/sounds/ are available as /local/sounds/...
   post_sound:
     name: Post sound
-    description: Path or URL for post detections, e.g. /local/sounds/post.mp3.
+    description: Path or URL for post detections, e.g. /local/sounds/post.mp3. Files in /homeassistant/www/sounds/ are available as /local/sounds/...
   sound_base_url:
     name: Home Assistant sound base URL
     description: Optional base URL. /local/... otherwise uses Home Assistant internal_url/external_url automatically.
