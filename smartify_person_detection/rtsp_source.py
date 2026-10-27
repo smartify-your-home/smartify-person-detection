@@ -1,4 +1,4 @@
-"""RTSP-Quelle mit Ringpuffer fuer den Postbote Detector.
+"""RTSP-Quelle mit Ringpuffer fuer Smartify Person Detection.
 
 
 
@@ -155,7 +155,7 @@ def _configure(app_globals):
 
             "rtsp_trigger_entities",
 
-            "binary_sensor.front_door_person,binary_sensor.front_door_fahrzeug"
+            ""
 
         )).split(",") if e.strip()
 
