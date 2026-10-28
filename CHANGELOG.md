@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.10
+
+- dynamische Sounddatei-Auswahl als MQTT-`select` für Person und Post
+- alle unterstützten Audio-Dateien unter `/homeassistant/www/sounds/` werden automatisch als `/local/sounds/...` angeboten
+- ausgewählter Pfad wird persistent gespeichert und automatisch für die Wiedergabe verwendet
+- fehlende lokal konfigurierte Sounddateien erzeugen eine persistente Home-Assistant-Warnmeldung
+- nur eingetragener Dateiname wird bei eindeutigem Treffer automatisch auf den vollständigen `/local/sounds/...`-Pfad aufgelöst
+- unterstützt MP3, WAV, OGG, M4A, AAC und FLAC
+
 ## 1.6.9
 
 - Soundwiedergabe an das Verhalten einer funktionierenden Home-Assistant-Automation angepasst
