@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.13
+
+- Startfehler aus 1.6.12 behoben: falsche Einrückung im Sound-Auswahl-Endpunkt verursachte `IndentationError`
+- Sound-Testseite und App-Auswahl starten wieder korrekt
+
 ## 1.6.12
 
 - MQTT-Testbutton-Entities aus Home Assistant wieder entfernt
