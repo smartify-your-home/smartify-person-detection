@@ -60,13 +60,26 @@ Wenn eine lokal konfigurierte Sounddatei fehlt, wird eine persistente Home-Assis
 Die in 1.6.10/1.6.11 verwendeten MQTT-`select`-Entities für Person/Post werden ab 1.6.12 per leerem retained Discovery-Payload entfernt.
 
 
-## Sound-Konfiguration
+## Sound & Zeit – zweite Weboberfläche
 
-Alle Sound-Einstellungen werden ausschließlich über die normale Home-Assistant-App-Seite **Konfiguration** vorgenommen. Die Ingress-Weboberfläche bleibt ausschließlich für ROI, Bildbereiche und Tür-/Garagentor-Kalibrierung reserviert.
+Die ROI-/Kalibrieroberfläche enthält weiterhin keine Sound-Einstellungen. Über **Sound & Zeit** wird eine zweite, getrennte Seite geöffnet.
 
-Die native Supervisor-/App-Konfigurationsseite unterstützt keine dynamischen Dateilisten aus `/local/` und keine benutzerdefinierten Aktionsbuttons. Daher können dort keine automatisch erzeugten Sound-Dropdowns oder Testknöpfe eingebettet werden.
+Diese Seite lädt vorhandene `media_player.*`-Entities aus Home Assistant und scannt rekursiv `/homeassistant/www/` nach MP3, WAV, OGG, M4A, AAC und FLAC. Die gefundenen Dateien werden als `/local/...` angeboten.
 
-Die App validiert eingetragene lokale Sounddateien beim Start und erzeugt bei fehlenden Dateien eine persistente Home-Assistant-Warnmeldung. Ein eindeutiger Dateiname kann weiterhin automatisch auf den passenden `/local/...`-Pfad aufgelöst werden.
+Einstellungen werden sofort in `/data/sound_settings.json` gespeichert und gelten ohne App-Neustart. Sie überschreiben die Sound-Startwerte aus der normalen Add-on-Konfiguration.
+
+URL-Modi:
+
+- **Relativer /local/-Pfad** – entspricht einer klassischen HA-Automation.
+- **Extern-Automatik** – verwendet ausschließlich die Home-Assistant-`external_url`.
+- **Manuelle Basis-URL** – verwendet eine explizit eingetragene HTTP/HTTPS-Basis-URL.
+
+Für Person und Post stehen jeweils zwei Tests bereit:
+
+1. **URL testen** prüft die tatsächlich aufgelöste URL serverseitig und öffnet eine absolute URL zusätzlich im Browser.
+2. **Ton testen** verwendet denselben Codepfad wie die automatische Erkennung inklusive Sound-Freigaben, Zeitfenster, Dateiauflösung und `media_player.play_media`.
+
+Fehlt bei Extern-Automatik die `external_url`, wird dies ausdrücklich als Fehler gemeldet.
 
 ## Fehlerbehebung 1.6.13
 
@@ -81,3 +94,8 @@ Beim Öffnen der App-Weboberfläche wird die Seite **Sound testen** direkt angez
 ## Änderung 1.6.15
 
 Die Sound-Testseite wurde aus Ingress entfernt. Die Weboberfläche ist wieder ausschließlich für ROI, Bildbereiche sowie Tür-/Garagentor-Kalibrierung vorgesehen.
+
+
+## Änderung 1.6.16
+
+Eine zweite Weboberfläche **Sound & Zeit** wurde ergänzt. Die ROI-/Kalibrierseite bleibt inhaltlich getrennt. Die Soundseite speichert Einstellungen persistent, bietet dynamische Mediaplayer- und Audio-Dateilisten, Extern-Automatik über Home Assistants `external_url`, URL-Tests sowie End-to-End-Soundtests.
