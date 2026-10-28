@@ -679,9 +679,13 @@ def sound_options_payload():
 
 
 def play_detection_sound(kind, force=False):
-    """Konfigurierten Ton fuer 'person' oder 'post' abspielen."""
+    """Konfigurierten Ton fuer 'person' oder 'post' abspielen.
+
+    Der Test-Button verwendet diese Funktion ebenfalls mit force=False und
+    durchlaeuft damit exakt dieselben Freigaben wie die automatische Erkennung.
+    """
     if kind not in ("person", "post"):
-        return
+        return False
 
     with sound_settings_lock:
         settings = dict(sound_settings)
@@ -690,24 +694,26 @@ def play_detection_sound(kind, force=False):
 
     if not force:
         if not switches.get("master", False):
-            return
+            print(f"Sound: {kind} nicht abgespielt – Sound gesamt ist AUS.")
+            return False
         if not switches.get(kind, True):
-            return
+            print(f"Sound: {kind} nicht abgespielt – {kind}-Ton ist AUS.")
+            return False
         if not sound_time_allowed(settings=settings):
             print(
-                f"Sound: {kind} erkannt, aber ausserhalb des erlaubten Zeitfensters "
+                f"Sound: {kind} nicht abgespielt – ausserhalb des erlaubten Zeitfensters "
                 f"{settings.get('time_start')}-{settings.get('time_end')}."
             )
-            return
+            return False
 
     media_player = str(settings.get("media_player", "")).strip()
     if not media_player:
         print("Sound: kein Mediaplayer konfiguriert.")
-        return
+        return False
 
     if not media_player.startswith("media_player."):
         print(f"Sound: ungueltige Mediaplayer-Entity: {media_player}")
-        return
+        return False
 
     raw_sound = _effective_sound_choice(kind)
     if not raw_sound:
@@ -716,7 +722,7 @@ def play_detection_sound(kind, force=False):
             _notify_sound_problem(kind, message)
         else:
             print(f"Sound: fuer {kind} ist kein Ton konfiguriert.")
-        return
+        return False
 
     sound = _resolve_sound_content_id(raw_sound, settings=settings)
 
@@ -735,11 +741,13 @@ def play_detection_sound(kind, force=False):
             timeout=10,
         )
         print(f"Sound: {kind} ueber {media_player} abgespielt: {sound}")
+        return True
     except Exception as exc:
         print(
             f"Sound: Wiedergabe fuer {kind} ueber {media_player} fehlgeschlagen: "
             f"{type(exc).__name__}: {exc}"
         )
+        return False
 
 
 # ---------------------------------------------------------
@@ -780,6 +788,8 @@ SOUND_PERSON_SELECT_STATE_TOPIC = f"{PREFIX}/sound/person_file/state"
 SOUND_PERSON_SELECT_COMMAND_TOPIC = f"{PREFIX}/sound/person_file/set"
 SOUND_POST_SELECT_STATE_TOPIC = f"{PREFIX}/sound/post_file/state"
 SOUND_POST_SELECT_COMMAND_TOPIC = f"{PREFIX}/sound/post_file/set"
+SOUND_PERSON_TEST_COMMAND_TOPIC = f"{PREFIX}/sound/person_test/press"
+SOUND_POST_TEST_COMMAND_TOPIC = f"{PREFIX}/sound/post_test/press"
 
 
 # ---------------------------------------------------------
@@ -1527,6 +1537,40 @@ def discovery():
             retain=True,
         )
         print("Sound: keine Audio-Dateien unter /homeassistant/www/sounds/ gefunden.")
+
+    for oid, name, default_entity_id, command_topic, icon in (
+        (
+            "person_sound_test",
+            "Person-Ton testen",
+            "button.smartify_person_detection_person_sound_test",
+            SOUND_PERSON_TEST_COMMAND_TOPIC,
+            "mdi:play-circle-outline",
+        ),
+        (
+            "post_sound_test",
+            "Post-Ton testen",
+            "button.smartify_person_detection_post_sound_test",
+            SOUND_POST_TEST_COMMAND_TOPIC,
+            "mdi:play-circle-outline",
+        ),
+    ):
+        config = {
+            "name": name,
+            "unique_id": f"smartify_person_detection_{oid}",
+            "default_entity_id": default_entity_id,
+            "command_topic": command_topic,
+            "payload_press": "PRESS",
+            "availability_topic": avail,
+            "icon": icon,
+            "device": dev,
+        }
+        info = c.publish(
+            f"{DISC}/button/smartify_person_detection/{oid}/config",
+            json.dumps(config),
+            retain=True,
+        )
+        info.wait_for_publish(timeout=3)
+        print(f"MQTT Discovery Sound-Test bereit: {default_entity_id}")
 
     _save_entity_identity(new_identity)
 
@@ -2992,7 +3036,7 @@ img.addEventListener('load',render);img.addEventListener('error',()=>{msg.textCo
 
 
 class DoorCalibrationHandler(BaseHTTPRequestHandler):
-    server_version = "SmartifyPersonDetectionUI/1.6.10"
+    server_version = "SmartifyPersonDetectionUI/1.6.11"
 
     def log_message(self, fmt, *args):
         print(
@@ -3415,6 +3459,16 @@ def on_message(client, userdata, msg):
         set_sound_selection("post", msg.payload.decode().strip())
         return
 
+    if msg.topic == SOUND_PERSON_TEST_COMMAND_TOPIC and payload == "PRESS":
+        print("Sound-Test Person gestartet – gleicher Ablauf wie automatische Erkennung.")
+        play_detection_sound("person", force=False)
+        return
+
+    if msg.topic == SOUND_POST_TEST_COMMAND_TOPIC and payload == "PRESS":
+        print("Sound-Test Post gestartet – gleicher Ablauf wie automatische Erkennung.")
+        play_detection_sound("post", force=False)
+        return
+
     if msg.topic == POST_RESET_TOPIC and payload == "RESET":
         print("Post abgeholt: separater Post-Reset empfangen.")
         if post_timer:
@@ -3501,6 +3555,8 @@ def connected(
         client.subscribe(SOUND_POST_COMMAND_TOPIC)
         client.subscribe(SOUND_PERSON_SELECT_COMMAND_TOPIC)
         client.subscribe(SOUND_POST_SELECT_COMMAND_TOPIC)
+        client.subscribe(SOUND_PERSON_TEST_COMMAND_TOPIC)
+        client.subscribe(SOUND_POST_TEST_COMMAND_TOPIC)
         publish_sound_switch_states()
         publish_sound_select_states()
         validate_configured_sounds()
