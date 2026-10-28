@@ -857,6 +857,8 @@ vertical2_status_topic = f"{PREFIX}/vertical2/status"
 vertical2_attributes_topic = f"{PREFIX}/vertical2/attributes"
 
 RESET_TOPIC = f"{PREFIX}/reset"
+PERSON_RESET_TOPIC = f"{PREFIX}/person_reset"
+PERSON_RESET_LEGACY_TOPIC = f"{PREFIX}/person/reset"
 POST_RESET_TOPIC = f"{PREFIX}/post_reset"
 
 SOUND_MASTER_STATE_TOPIC = f"{PREFIX}/sound/master/state"
@@ -3131,7 +3133,7 @@ img.addEventListener('load',render);img.addEventListener('error',()=>{msg.textCo
 
 
 class DoorCalibrationHandler(BaseHTTPRequestHandler):
-    server_version = "SmartifyPersonDetectionUI/1.6.16"
+    server_version = "SmartifyPersonDetectionUI/1.6.17"
 
     def log_message(self, fmt, *args):
         print(
@@ -3592,6 +3594,15 @@ def on_message(client, userdata, msg):
         set_sound_switch(sound_commands[msg.topic], payload == "ON")
         return
 
+    if msg.topic in (PERSON_RESET_TOPIC, PERSON_RESET_LEGACY_TOPIC) and payload == "RESET":
+        print(f"Person-Reset empfangen auf {msg.topic}.")
+        if person_timer:
+            person_timer.cancel()
+            person_timer = None
+        client.publish(person_status, "OFF", retain=True)
+        print("Person-Sensor auf OFF gesetzt; Post-Sensor bleibt unveraendert.")
+        return
+
     if msg.topic == POST_RESET_TOPIC and payload == "RESET":
         print("Post abgeholt: separater Post-Reset empfangen.")
         if post_timer:
@@ -3672,17 +3683,19 @@ def connected(
         publish_vertical2_state()
 
         client.subscribe(RESET_TOPIC)
+        client.subscribe(PERSON_RESET_TOPIC)
+        client.subscribe(PERSON_RESET_LEGACY_TOPIC)
         client.subscribe(POST_RESET_TOPIC)
         client.subscribe(SOUND_MASTER_COMMAND_TOPIC)
         client.subscribe(SOUND_PERSON_COMMAND_TOPIC)
         client.subscribe(SOUND_POST_COMMAND_TOPIC)
         publish_sound_switch_states()
-        publish_sound_select_states()
         validate_configured_sounds()
 
         print(
-            f"Reset-Topics abonniert: {RESET_TOPIC}, {POST_RESET_TOPIC}; "
-            "Sound-Schalter bereit."
+            "Reset-Topics abonniert: "
+            f"{RESET_TOPIC}, {PERSON_RESET_TOPIC}, {PERSON_RESET_LEGACY_TOPIC}, "
+            f"{POST_RESET_TOPIC}; Sound-Schalter bereit."
         )
 
     else:
