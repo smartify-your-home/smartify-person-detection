@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.11
+
+- zwei Home-Assistant-Testbuttons für Person- und Post-Ton ergänzt
+- Testbuttons verwenden exakt denselben Wiedergabepfad wie eine automatische Erkennung
+- Test berücksichtigt globalen Sound-Schalter, getrennten Person/Post-Schalter und zulässigen Zeitbereich
+- Test verwendet dieselbe ausgewählte Sounddatei, Pfadauflösung, Mediaplayer-Entity und `media_player.play_media`
+- blockierte Tests schreiben einen klaren Grund ins App-Protokoll
+
 ## 1.6.10
 
 - dynamische Sounddatei-Auswahl als MQTT-`select` für Person und Post
