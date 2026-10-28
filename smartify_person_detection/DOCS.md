@@ -99,3 +99,22 @@ Die Sound-Testseite wurde aus Ingress entfernt. Die Weboberfläche ist wieder au
 ## Änderung 1.6.16
 
 Eine zweite Weboberfläche **Sound & Zeit** wurde ergänzt. Die ROI-/Kalibrierseite bleibt inhaltlich getrennt. Die Soundseite speichert Einstellungen persistent, bietet dynamische Mediaplayer- und Audio-Dateilisten, Extern-Automatik über Home Assistants `external_url`, URL-Tests sowie End-to-End-Soundtests.
+
+
+## MQTT-Reset-Verhalten
+
+Unterstützte Topics:
+
+- `<prefix>/person_reset` – nur Person
+- `<prefix>/person/reset` – Legacy-Alias für nur Person
+- `<prefix>/post_reset` – nur Post
+- `<prefix>/reset` – Person und Post gemeinsam
+
+Payload jeweils: `RESET`.
+
+Auto-Reset:
+
+- `person_auto_reset: true` → Person wird nach `person_sensor_on_seconds` zurückgesetzt.
+- `post_auto_reset: true` → Post wird nach `binary_sensor_on_seconds` zurückgesetzt.
+- Ist der jeweilige Auto-Reset deaktiviert, bleibt der Sensor auf ON, bis ein manueller Reset oder ein Mitternachtsreset erfolgt.
+- `reset_binaries_at_midnight: true` setzt Person und Post beim ersten Hauptschleifendurchlauf nach dem lokalen Datumswechsel auf OFF; gleichzeitig werden die Tageszähler zurückgesetzt.
