@@ -79,14 +79,13 @@ Die Optionen werden automatisch aus allen unterstützten Audiodateien unter `/ho
 
 Ist eine in der App-Konfiguration eingetragene lokale Sounddatei nicht vorhanden, erzeugt die App zusätzlich eine **persistente Home-Assistant-Warnmeldung** und schreibt den Fehler ins App-Protokoll. Wird nur ein Dateiname eingetragen und dieser ist im Soundordner eindeutig vorhanden, wird der korrekte `/local/sounds/...`-Pfad automatisch aufgelöst.
 
-### Sound-Test in Home Assistant
+### Sound-Test direkt in der App
 
-Die App veröffentlicht zwei MQTT-`button`-Entities:
+Die App-Weboberfläche hat eine eigene Seite **Sound testen**, getrennt von **Bildbereiche & Kalibrierung**. Dort werden die aktuell geladenen Sound-Einstellungen angezeigt, gefundene Audiodateien können für Person/Post ausgewählt werden und beide Sounds lassen sich direkt testen.
 
-- `button.smartify_person_detection_person_sound_test`
-- `button.smartify_person_detection_post_sound_test`
+Der Test durchläuft **exakt denselben technischen Ablauf wie eine echte automatische Erkennung**: globaler Sound-Schalter → Person/Post-Schalter → erlaubtes Zeitfenster → aktuell ausgewählte bzw. konfigurierte Sounddatei → Pfadauflösung → konfigurierter Mediaplayer → `media_player.play_media`. Es gibt keinen Test-Sonderweg.
 
-Ein Tastendruck durchläuft **exakt denselben technischen Ablauf wie eine echte automatische Erkennung**: globaler Sound-Schalter → Person/Post-Schalter → erlaubtes Zeitfenster → aktuell ausgewählte bzw. konfigurierte Sounddatei → Pfadauflösung → konfigurierter Mediaplayer → `media_player.play_media`. Der Test umgeht keine Sperre. Ist z. B. das Zeitfenster geschlossen oder ein Sound-Schalter aus, bleibt der Test ebenfalls stumm und der Grund steht im App-Protokoll.
+Die in 1.6.11 kurzzeitig angelegten MQTT-Testbutton-Entities werden ab 1.6.12 automatisch aus MQTT Discovery entfernt.
 
 ### Sound-Schalter in Home Assistant
 
@@ -112,10 +111,8 @@ gespeichert und erscheint damit als `Last-Modified`.
 
 ## Weboberfläche
 
-Die Ingress-Weboberfläche ist ausschließlich für **Bildbereiche und Kalibrierung** zuständig:
-Kamerabild, Personen-ROI, Haustür sowie optionale Garagentor-Kantenmessungen. Allgemeine
-App-Konfiguration wie Sound, RTSP und MQTT gehört nicht in dieses Menü.
+Die App-Weboberfläche startet mit einer Werkzeugauswahl. **Sound testen** und **Bildbereiche & Kalibrierung** sind getrennte Seiten. Die Kalibrierseite enthält nur Kamerabild, Personen-ROI, Haustür und optionale Garagentor-Kantenmessungen. Allgemeine App-Konfiguration wie Sound, RTSP und MQTT bleibt auf der normalen Home-Assistant-Seite **Konfiguration**.
 
 ## Version
 
-Aktuell: **1.6.11**
+Aktuell: **1.6.12**
