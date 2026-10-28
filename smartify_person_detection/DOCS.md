@@ -39,3 +39,14 @@ Die Slideshow wird nach `/homeassistant/www/slideshow_persondetection.html` inst
 ## Changelog
 
 Der vollständige Changelog befindet sich direkt bei der App unter **Changelog** sowie im Repository.
+
+
+## Sound-URL-Auflösung
+
+Für Sounddateien unter `/local/...` gilt folgende Priorität:
+
+1. manuell konfigurierte `sound_base_url`
+2. Home-Assistant `external_url`
+3. Home-Assistant `internal_url`
+
+Damit erhalten extern verbundene Clients bevorzugt eine HTTPS-fähige externe Adresse. Im App-Protokoll wird ausgegeben, welche Basis-URL tatsächlich verwendet wurde.
