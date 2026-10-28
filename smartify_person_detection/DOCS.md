@@ -53,14 +53,11 @@ Für MP3 ist `sound_media_content_type` standardmäßig `audio/mpeg`.
 
 ## Dynamische Sounddatei-Auswahl
 
-Die native Home-Assistant-App-Konfigurationsseite unterstützt keine dynamisch aus dem Dateisystem erzeugten Dropdowns. Deshalb stellt Smartify Person Detection zwei MQTT-`select`-Entities bereit:
-
-- `select.smartify_person_detection_person_sound_file`
-- `select.smartify_person_detection_post_sound_file`
-
-Die Liste wird beim App-Start aus `/homeassistant/www/sounds/` aufgebaut. Eine Auswahl setzt intern automatisch den passenden `/local/sounds/...`-Pfad.
+Die dynamische Sounddatei-Auswahl befindet sich auf der eigenen App-Seite **Sound testen**. Dort wird die Liste beim Öffnen aus `/homeassistant/www/sounds/` aufgebaut. Eine Auswahl setzt intern automatisch den passenden `/local/sounds/...`-Pfad.
 
 Wenn eine lokal konfigurierte Sounddatei fehlt, wird eine persistente Home-Assistant-Benachrichtigung erzeugt. Ein allein eingetragener Dateiname wird automatisch auf einen eindeutigen Treffer im Soundordner aufgelöst.
+
+Die in 1.6.10/1.6.11 verwendeten MQTT-`select`-Entities für Person/Post werden ab 1.6.12 per leerem retained Discovery-Payload entfernt.
 
 
 ## Sound-Testseite
