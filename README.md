@@ -112,4 +112,4 @@ Die App-Weboberfläche startet mit einer Werkzeugauswahl. **Sound testen** und *
 
 ## Version
 
-Aktuell: **1.6.12**
+Aktuell: **1.6.13**
