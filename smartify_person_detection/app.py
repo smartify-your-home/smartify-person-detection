@@ -98,7 +98,7 @@ SOUND_TIME_START = str(g("sound_time_start", "07:00")).strip() or "07:00"
 SOUND_TIME_END = str(g("sound_time_end", "22:00")).strip() or "22:00"
 SOUND_SETTINGS_FILE = Path("/data/sound_settings.json")
 SOUND_SWITCH_STATE_FILE = Path("/data/sound_switches.json")
-SOUND_FILES_DIR = Path("/homeassistant/www/sounds")
+SOUND_FILES_DIR = Path("/homeassistant/www")
 SOUND_SELECTION_FILE = Path("/data/sound_selection.json")
 SOUND_SELECT_NONE = "— nicht gewählt —"
 
@@ -449,7 +449,7 @@ def _scan_sound_files():
                 if not path.is_file() or path.suffix.lower() not in allowed:
                     continue
                 rel = path.relative_to(SOUND_FILES_DIR).as_posix()
-                result.append("/local/sounds/" + quote(rel, safe="/"))
+                result.append("/local/" + quote(rel, safe="/"))
     except Exception as exc:
         print(f"Sound: Sounddatei-Liste konnte nicht geladen werden: {exc}")
     return sorted(set(result), key=str.lower)
@@ -484,11 +484,11 @@ def _normalize_sound_choice(value, available=None):
         available = _scan_sound_files()
 
     # Vollstaendiger /local/-Pfad.
-    if value.startswith("/local/sounds/"):
+    if value.startswith("/local/"):
         return value if value in available else ""
 
     # Nur Dateiname angegeben: bei eindeutigem Treffer automatisch den
-    # korrekten /local/sounds/... Pfad verwenden.
+    # korrekten /local/... Pfad verwenden.
     filename = Path(value).name
     matches = [
         candidate for candidate in available
@@ -529,7 +529,7 @@ def _sound_missing_message(kind):
         return ""
     return (
         f"Die konfigurierte Sounddatei fuer {kind} ist nicht verfuegbar: {configured}. "
-        "Verfuegbare Dateien liegen unter /homeassistant/www/sounds/ bzw. /local/sounds/."
+        "Verfuegbare Dateien liegen unter /homeassistant/www/ und sind als /local/... erreichbar."
     )
 
 
@@ -2968,10 +2968,10 @@ SOUND_TEST_HTML = r'''<!doctype html>
 <style>
 :root{color-scheme:dark;background:#111;color:#eee;font-family:system-ui,sans-serif}*{box-sizing:border-box}body{margin:0;padding:14px;background:#111;color:#eee}main{max-width:900px;margin:auto}.panel{background:#1d1d1d;border:1px solid #333;border-radius:12px;padding:14px;margin:12px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px 18px}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0}button{font:inherit;padding:10px 14px;border:0;border-radius:9px;background:#2f6fed;color:white;cursor:pointer;min-height:42px}button.secondary{background:#444}select{width:100%;font:inherit;padding:9px;background:#222;color:#eee;border:1px solid #555;border-radius:7px}code{overflow-wrap:anywhere}.hint{color:#bbb;line-height:1.4}.ok{color:#9fe8a7}.bad{color:#ff9d9d}.back{color:#9bc1ff;text-decoration:none}#msg{min-height:1.5em;margin-top:10px}
 </style></head><body><main>
-<a id="back" class="back" href="#">← Zurück</a>
+<a id="calibrationLink" class="back" href="#">▣ Bildbereiche & Kalibrierung</a>
 <h2>Sound testen</h2>
 <div class="panel">
-<div class="hint">Diese Seite verwendet die aktuell geladene App-Konfiguration. Nach Änderungen auf der Home-Assistant-Seite <strong>Konfiguration</strong> die App neu starten, damit die neuen Werte geladen sind.</div>
+<div class="hint">Diese Seite verwendet die aktuell geladene App-Konfiguration. Alle Audio-Dateien unter <code>/local/</code> werden automatisch vorgeschlagen. Nach Änderungen auf der Home-Assistant-Seite <strong>Konfiguration</strong> die App neu starten, damit die neuen Werte geladen sind.</div>
 <div class="grid" style="margin-top:12px">
 <div><strong>Mediaplayer</strong><br><code id="player">-</code></div>
 <div><strong>Basis-URL</strong><br><code id="baseurl">-</code></div>
@@ -2996,8 +2996,11 @@ SOUND_TEST_HTML = r'''<!doctype html>
 var $=function(id){return document.getElementById(id);};
 var here=window.location.pathname.replace(/\/$/,'');
 var root=here.replace(/\/sound-test$/,'');
-$('back').href=root||'./';
-function endpoint(n){return here+'/api/'+n;}
+$('calibrationLink').href=(root||here)+'/calibration';
+function endpoint(n){
+  var apiBase=here.endsWith('/sound-test')?here:(here+'/sound-test');
+  return apiBase+'/api/'+n;
+}
 async function jfetch(url,opt){opt=opt||{};var r=await fetch(url,opt);var j=await r.json().catch(function(){return {};});if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j;}
 function optionList(sel,files,current,configured){
   sel.innerHTML='';
@@ -3085,7 +3088,7 @@ img.addEventListener('load',render);img.addEventListener('error',()=>{msg.textCo
 
 
 class DoorCalibrationHandler(BaseHTTPRequestHandler):
-    server_version = "SmartifyPersonDetectionUI/1.6.13"
+    server_version = "SmartifyPersonDetectionUI/1.6.14"
 
     def log_message(self, fmt, *args):
         print(
@@ -3314,7 +3317,7 @@ class DoorCalibrationHandler(BaseHTTPRequestHandler):
             )
             html = DOOR_UI_HTML.encode("utf-8")
         else:
-            html = APP_HOME_HTML.encode("utf-8")
+            html = SOUND_TEST_HTML.encode("utf-8")
 
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
