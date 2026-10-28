@@ -99,6 +99,7 @@ SOUND_TIME_END = str(g("sound_time_end", "22:00")).strip() or "22:00"
 SOUND_SETTINGS_FILE = Path("/data/sound_settings.json")
 SOUND_SWITCH_STATE_FILE = Path("/data/sound_switches.json")
 SOUND_FILES_DIR = Path("/homeassistant/www/sounds")
+SOUND_SELECTION_FILE = Path("/data/sound_selection.json")
 
 # Haustuer-Erkennung
 DOOR_ENABLED = bool(g("door_enabled", True))
@@ -438,6 +439,181 @@ def update_sound_settings(data):
         _HA_BASE_URL_CACHE = None
 
 
+def _scan_sound_files():
+    allowed = {".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac"}
+    result = []
+    try:
+        if SOUND_FILES_DIR.exists():
+            for path in SOUND_FILES_DIR.rglob("*"):
+                if not path.is_file() or path.suffix.lower() not in allowed:
+                    continue
+                rel = path.relative_to(SOUND_FILES_DIR).as_posix()
+                result.append("/local/sounds/" + quote(rel, safe="/"))
+    except Exception as exc:
+        print(f"Sound: Sounddatei-Liste konnte nicht geladen werden: {exc}")
+    return sorted(set(result), key=str.lower)
+
+
+def _load_sound_selection():
+    try:
+        data = json.loads(SOUND_SELECTION_FILE.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+sound_selection = _load_sound_selection()
+sound_selection_lock = threading.Lock()
+
+
+def _save_sound_selection():
+    with sound_selection_lock:
+        SOUND_SELECTION_FILE.write_text(
+            json.dumps(sound_selection, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+
+def _normalize_sound_choice(value, available=None):
+    value = str(value or "").strip()
+    if not value:
+        return ""
+
+    if available is None:
+        available = _scan_sound_files()
+
+    # Vollstaendiger /local/-Pfad.
+    if value.startswith("/local/sounds/"):
+        return value if value in available else ""
+
+    # Nur Dateiname angegeben: bei eindeutigem Treffer automatisch den
+    # korrekten /local/sounds/... Pfad verwenden.
+    filename = Path(value).name
+    matches = [
+        candidate for candidate in available
+        if Path(candidate.split("?", 1)[0]).name == filename
+    ]
+    if len(matches) == 1:
+        print(f"Sound: '{value}' automatisch auf '{matches[0]}' aufgeloest.")
+        return matches[0]
+
+    # Absolute URLs bleiben erlaubt und werden nicht lokal validiert.
+    if value.startswith(("http://", "https://")):
+        return value
+
+    return ""
+
+
+def _effective_sound_choice(kind):
+    key = "post" if kind == "post" else "person"
+    configured = POST_SOUND if key == "post" else PERSON_SOUND
+    available = _scan_sound_files()
+
+    with sound_selection_lock:
+        selected = str(sound_selection.get(key, "") or "").strip()
+
+    if selected and selected in available:
+        return selected
+
+    normalized = _normalize_sound_choice(configured, available=available)
+    if normalized:
+        return normalized
+
+    return ""
+
+
+def _sound_missing_message(kind):
+    configured = POST_SOUND if kind == "post" else PERSON_SOUND
+    if not str(configured or "").strip():
+        return ""
+    return (
+        f"Die konfigurierte Sounddatei fuer {kind} ist nicht verfuegbar: {configured}. "
+        "Verfuegbare Dateien liegen unter /homeassistant/www/sounds/ bzw. /local/sounds/."
+    )
+
+
+def _notify_sound_problem(kind, message):
+    if not message:
+        return
+    print(f"Sound-Warnung: {message}")
+    try:
+        _ha_api_request(
+            "/services/persistent_notification/create",
+            payload={
+                "title": "Smartify Person Detection – Sounddatei fehlt",
+                "message": message,
+                "notification_id": f"smartify_person_detection_sound_{kind}_missing",
+            },
+            timeout=10,
+        )
+    except Exception as exc:
+        print(f"Sound-Warnung konnte nicht als HA-Meldung erstellt werden: {exc}")
+
+
+def _dismiss_sound_problem(kind):
+    try:
+        _ha_api_request(
+            "/services/persistent_notification/dismiss",
+            payload={
+                "notification_id": f"smartify_person_detection_sound_{kind}_missing"
+            },
+            timeout=10,
+        )
+    except Exception:
+        pass
+
+
+def validate_configured_sounds():
+    available = _scan_sound_files()
+    for kind, configured in (("person", PERSON_SOUND), ("post", POST_SOUND)):
+        configured = str(configured or "").strip()
+        if not configured:
+            _dismiss_sound_problem(kind)
+            continue
+        normalized = _normalize_sound_choice(configured, available=available)
+        if normalized:
+            _dismiss_sound_problem(kind)
+        else:
+            _notify_sound_problem(kind, _sound_missing_message(kind))
+
+
+def publish_sound_select_states():
+    available = _scan_sound_files()
+    with sound_selection_lock:
+        current = dict(sound_selection)
+
+    for kind, topic, configured in (
+        ("person", SOUND_PERSON_SELECT_STATE_TOPIC, PERSON_SOUND),
+        ("post", SOUND_POST_SELECT_STATE_TOPIC, POST_SOUND),
+    ):
+        selected = str(current.get(kind, "") or "").strip()
+        if selected not in available:
+            selected = _normalize_sound_choice(configured, available=available)
+        if selected not in available:
+            selected = available[0] if available else ""
+        c.publish(topic, selected, retain=True)
+
+
+def set_sound_selection(kind, value):
+    if kind not in ("person", "post"):
+        raise ValueError("Unbekannte Sound-Auswahl.")
+    available = _scan_sound_files()
+    value = str(value or "").strip()
+    if value not in available:
+        raise ValueError(f"Sounddatei nicht verfuegbar: {value}")
+    with sound_selection_lock:
+        sound_selection[kind] = value
+    _save_sound_selection()
+    topic = (
+        SOUND_PERSON_SELECT_STATE_TOPIC
+        if kind == "person"
+        else SOUND_POST_SELECT_STATE_TOPIC
+    )
+    c.publish(topic, value, retain=True)
+    _dismiss_sound_problem(kind)
+    print(f"Sound-Auswahl {kind}: {value}")
+
+
 def sound_options_payload():
     media_players = []
     try:
@@ -457,19 +633,7 @@ def sound_options_payload():
 
     media_players.sort(key=lambda x: (x["name"].lower(), x["entity_id"]))
 
-    sound_files = []
-    try:
-        if SOUND_FILES_DIR.exists():
-            allowed = {".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac"}
-            for path in SOUND_FILES_DIR.rglob("*"):
-                if not path.is_file() or path.suffix.lower() not in allowed:
-                    continue
-                rel = path.relative_to(SOUND_FILES_DIR).as_posix()
-                sound_files.append("/local/sounds/" + quote(rel, safe="/"))
-    except Exception as exc:
-        print(f"Sound: Sounddatei-Liste konnte nicht geladen werden: {exc}")
-
-    sound_files.sort(key=str.lower)
+    sound_files = _scan_sound_files()
 
     with sound_settings_lock:
         settings = dict(sound_settings)
@@ -520,16 +684,16 @@ def play_detection_sound(kind, force=False):
         print(f"Sound: ungueltige Mediaplayer-Entity: {media_player}")
         return
 
-    raw_sound = (
-        settings.get("post_sound", "")
-        if kind == "post"
-        else settings.get("person_sound", "")
-    )
-    sound = _resolve_sound_content_id(raw_sound, settings=settings)
-
-    if not sound:
-        print(f"Sound: fuer {kind} ist kein Ton konfiguriert.")
+    raw_sound = _effective_sound_choice(kind)
+    if not raw_sound:
+        message = _sound_missing_message(kind)
+        if message:
+            _notify_sound_problem(kind, message)
+        else:
+            print(f"Sound: fuer {kind} ist kein Ton konfiguriert.")
         return
+
+    sound = _resolve_sound_content_id(raw_sound, settings=settings)
 
     payload = {
         "entity_id": media_player,
@@ -587,6 +751,10 @@ SOUND_PERSON_STATE_TOPIC = f"{PREFIX}/sound/person/state"
 SOUND_PERSON_COMMAND_TOPIC = f"{PREFIX}/sound/person/set"
 SOUND_POST_STATE_TOPIC = f"{PREFIX}/sound/post/state"
 SOUND_POST_COMMAND_TOPIC = f"{PREFIX}/sound/post/set"
+SOUND_PERSON_SELECT_STATE_TOPIC = f"{PREFIX}/sound/person_file/state"
+SOUND_PERSON_SELECT_COMMAND_TOPIC = f"{PREFIX}/sound/person_file/set"
+SOUND_POST_SELECT_STATE_TOPIC = f"{PREFIX}/sound/post_file/state"
+SOUND_POST_SELECT_COMMAND_TOPIC = f"{PREFIX}/sound/post_file/set"
 
 
 # ---------------------------------------------------------
@@ -1285,6 +1453,55 @@ def discovery():
         )
         info.wait_for_publish(timeout=3)
         print(f"MQTT Discovery Sound-Switch bereit: {default_entity_id}")
+
+    sound_files = _scan_sound_files()
+    if sound_files:
+        for oid, name, default_entity_id, state_topic, command_topic in (
+            (
+                "person_file",
+                "Person-Sounddatei",
+                "select.smartify_person_detection_person_sound_file",
+                SOUND_PERSON_SELECT_STATE_TOPIC,
+                SOUND_PERSON_SELECT_COMMAND_TOPIC,
+            ),
+            (
+                "post_file",
+                "Post-Sounddatei",
+                "select.smartify_person_detection_post_sound_file",
+                SOUND_POST_SELECT_STATE_TOPIC,
+                SOUND_POST_SELECT_COMMAND_TOPIC,
+            ),
+        ):
+            config = {
+                "name": name,
+                "unique_id": f"smartify_person_detection_{oid}",
+                "default_entity_id": default_entity_id,
+                "state_topic": state_topic,
+                "command_topic": command_topic,
+                "options": sound_files,
+                "availability_topic": avail,
+                "icon": "mdi:music-note",
+                "device": dev,
+            }
+            info = c.publish(
+                f"{DISC}/select/smartify_person_detection/{oid}/config",
+                json.dumps(config),
+                retain=True,
+            )
+            info.wait_for_publish(timeout=3)
+            print(f"MQTT Discovery Sound-Auswahl bereit: {default_entity_id}")
+    else:
+        c.publish(
+            f"{DISC}/select/smartify_person_detection/person_file/config",
+            "",
+            retain=True,
+        )
+        c.publish(
+            f"{DISC}/select/smartify_person_detection/post_file/config",
+            "",
+            retain=True,
+        )
+        print("Sound: keine Audio-Dateien unter /homeassistant/www/sounds/ gefunden.")
 
     _save_entity_identity(new_identity)
 
@@ -2750,7 +2967,7 @@ img.addEventListener('load',render);img.addEventListener('error',()=>{msg.textCo
 
 
 class DoorCalibrationHandler(BaseHTTPRequestHandler):
-    server_version = "SmartifyPersonDetectionUI/1.6.9"
+    server_version = "SmartifyPersonDetectionUI/1.6.10"
 
     def log_message(self, fmt, *args):
         print(
@@ -3165,6 +3382,14 @@ def on_message(client, userdata, msg):
         set_sound_switch(sound_commands[msg.topic], payload == "ON")
         return
 
+    if msg.topic == SOUND_PERSON_SELECT_COMMAND_TOPIC:
+        set_sound_selection("person", msg.payload.decode().strip())
+        return
+
+    if msg.topic == SOUND_POST_SELECT_COMMAND_TOPIC:
+        set_sound_selection("post", msg.payload.decode().strip())
+        return
+
     if msg.topic == POST_RESET_TOPIC and payload == "RESET":
         print("Post abgeholt: separater Post-Reset empfangen.")
         if post_timer:
@@ -3249,7 +3474,11 @@ def connected(
         client.subscribe(SOUND_MASTER_COMMAND_TOPIC)
         client.subscribe(SOUND_PERSON_COMMAND_TOPIC)
         client.subscribe(SOUND_POST_COMMAND_TOPIC)
+        client.subscribe(SOUND_PERSON_SELECT_COMMAND_TOPIC)
+        client.subscribe(SOUND_POST_SELECT_COMMAND_TOPIC)
         publish_sound_switch_states()
+        publish_sound_select_states()
+        validate_configured_sounds()
 
         print(
             f"Reset-Topics abonniert: {RESET_TOPIC}, {POST_RESET_TOPIC}; "
