@@ -264,7 +264,13 @@ def _ha_api_request(path, payload=None, timeout=10):
 
 
 def _homeassistant_base_url(settings=None):
-    """LAN-taugliche HA-Basis-URL fuer /local/-Sounds bestimmen."""
+    """Erreichbare HA-Basis-URL fuer /local/-Sounds bestimmen.
+
+    Prioritaet:
+    1. manuell konfigurierte Basis-URL
+    2. Home-Assistant external_url
+    3. Home-Assistant internal_url
+    """
     global _HA_BASE_URL_CACHE
 
     if settings is None:
@@ -273,6 +279,7 @@ def _homeassistant_base_url(settings=None):
 
     configured = str(settings.get("base_url", "")).strip().rstrip("/")
     if configured:
+        print(f"Sound: verwende manuell konfigurierte Basis-URL: {configured}")
         return configured
 
     with _HA_BASE_URL_LOCK:
@@ -280,18 +287,26 @@ def _homeassistant_base_url(settings=None):
             return _HA_BASE_URL_CACHE
 
         base = ""
+        source = ""
         try:
             cfg = _ha_api_request("/config", timeout=5)
             if isinstance(cfg, dict):
-                base = str(
-                    cfg.get("internal_url")
-                    or cfg.get("external_url")
-                    or ""
-                ).strip().rstrip("/")
+                external = str(cfg.get("external_url") or "").strip().rstrip("/")
+                internal = str(cfg.get("internal_url") or "").strip().rstrip("/")
+                if external:
+                    base = external
+                    source = "external_url"
+                elif internal:
+                    base = internal
+                    source = "internal_url"
         except Exception as exc:
             print(f"Sound: Home-Assistant-URL konnte nicht automatisch ermittelt werden: {exc}")
 
         _HA_BASE_URL_CACHE = base
+        if base:
+            print(f"Sound: verwende Home-Assistant {source}: {base}")
+        else:
+            print("Sound: keine Home-Assistant Basis-URL gefunden.")
         return base
 
 
