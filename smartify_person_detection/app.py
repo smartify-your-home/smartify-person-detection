@@ -3085,7 +3085,7 @@ img.addEventListener('load',render);img.addEventListener('error',()=>{msg.textCo
 
 
 class DoorCalibrationHandler(BaseHTTPRequestHandler):
-    server_version = "SmartifyPersonDetectionUI/1.6.12"
+    server_version = "SmartifyPersonDetectionUI/1.6.13"
 
     def log_message(self, fmt, *args):
         print(
@@ -3355,7 +3355,7 @@ class DoorCalibrationHandler(BaseHTTPRequestHandler):
                     with sound_selection_lock:
                         sound_selection.pop(kind, None)
                     _save_sound_selection()
-                                validate_configured_sounds()
+                    validate_configured_sounds()
                 self._json({"ok": True, "status": sound_test_status_payload()})
             except Exception as e:
                 self._json({"error": str(e)}, 400)
