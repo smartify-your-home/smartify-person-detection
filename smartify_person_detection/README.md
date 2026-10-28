@@ -76,11 +76,22 @@ Ist eine in der App-Konfiguration eingetragene lokale Sounddatei nicht vorhanden
 
 Die kurzzeitig in 1.6.10/1.6.11 angelegten MQTT-`select`-Entities für die Dateiauswahl werden ab 1.6.12 automatisch aus MQTT Discovery entfernt.
 
-### Sound-Konfiguration
+### Sound & Zeit – zweite Weboberfläche
 
-Alle Sound-Einstellungen gehören ausschließlich auf die normale Home-Assistant-App-Seite **Konfiguration**. Die Ingress-Weboberfläche ist bewusst nur für ROI, Bildbereiche sowie Tür-/Garagentor-Kalibrierung reserviert.
+Die ROI-/Kalibrieroberfläche bleibt ausschließlich für Bildbereiche sowie Tür-/Garagentor-Kalibrierung reserviert. Zusätzlich gibt es eine **zweite, getrennte Weboberfläche „Sound & Zeit“**.
 
-Wichtig: Die native Home-Assistant-App-Konfigurationsseite unterstützt keine dynamisch aus dem Dateisystem erzeugten Dropdowns und keine eigenen Aktions-/Testbuttons. Deshalb bleiben Sounddateien dort Textfelder. Die App prüft beim Start jedoch, ob eingetragene lokale Dateien tatsächlich vorhanden sind, und erzeugt bei Fehlern eine persistente Home-Assistant-Warnmeldung.
+Dort können ohne App-Neustart eingestellt und gespeichert werden:
+
+- Mediaplayer
+- Person- und Post-Sound aus allen gefundenen Dateien unter `/local/`
+- Sound gesamt sowie Person/Post getrennt
+- erlaubtes Zeitfenster
+- Medientyp
+- URL-Modus: relativer `/local/`-Pfad, **Extern-Automatik** oder manuelle Basis-URL
+
+Die **Extern-Automatik** verwendet gezielt die in Home Assistant konfigurierte `external_url`. Die Seite zeigt `external_url` und `internal_url` an und bietet für Person/Post jeweils einen **URL-Test** und einen **Sound-Test**.
+
+Der Sound-Test nutzt denselben `media_player.play_media`-Ablauf wie die automatische Erkennung; Sound-Schalter und Zeitfenster werden nicht umgangen. Die Einstellungen werden unter `/data/sound_settings.json` persistent gespeichert und überschreiben die Sound-Startwerte aus der normalen Add-on-Konfiguration.
 
 ### Sound-Schalter in Home Assistant
 
@@ -106,8 +117,8 @@ gespeichert und erscheint damit als `Last-Modified`.
 
 ## Weboberfläche
 
-Die Ingress-Weboberfläche ist ausschließlich für Kamerabild, Personen-ROI, Haustür sowie optionale Garagentor-Kantenmessungen und deren Kalibrierung vorgesehen. Allgemeine App-Konfiguration wie Sound, RTSP und MQTT bleibt ausschließlich auf der normalen Home-Assistant-Seite **Konfiguration**.
+Die normale Ingress-Hauptseite bleibt ausschließlich für Kamerabild, Personen-ROI, Haustür sowie optionale Garagentor-Kantenmessungen und deren Kalibrierung vorgesehen. Über den separaten Navigationsknopf **Sound & Zeit** wird eine zweite, getrennte Seite geöffnet. RTSP, MQTT und sonstige Basisoptionen bleiben auf der normalen Home-Assistant-Seite **Konfiguration**.
 
 ## Version
 
-Aktuell: **1.6.15**
+Aktuell: **1.6.16**
