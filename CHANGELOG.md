@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.6.14
+
+- **Sound testen** wird beim Öffnen der App-Weboberfläche jetzt direkt angezeigt
+- Person- und Post-Testknöpfe sind dadurch ohne zusätzlichen Zwischenschritt sichtbar
+- Audiodatei-Suche auf den gesamten Home-Assistant-`/local/`-Bereich erweitert
+- rekursiver Scan von `/homeassistant/www/` statt nur `/homeassistant/www/sounds/`
+- unterstützt weiterhin MP3, WAV, OGG, M4A, AAC und FLAC
+- vollständiger `/local/...`-Pfad wird automatisch für die ausgewählte Datei verwendet
+- **Bildbereiche & Kalibrierung** bleibt als getrennte Seite erreichbar
+
 ## 1.6.13
 
 - Startfehler aus 1.6.12 behoben: falsche Einrückung im Sound-Auswahl-Endpunkt verursachte `IndentationError`
