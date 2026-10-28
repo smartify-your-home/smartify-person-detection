@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.6.16
+
+- zweite, getrennte Weboberfläche **Sound & Zeit** ergänzt
+- ROI-/Kalibrieroberfläche bleibt ausschließlich für Bildbereiche und Tür-/Garagentor-Kalibrierung
+- dynamische Liste vorhandener `media_player.*`-Entities
+- rekursiver Scan aller unterstützten Audiodateien unter `/homeassistant/www/` → `/local/...`
+- Sound- und Zeiteinstellungen werden persistent unter `/data/sound_settings.json` gespeichert und sofort aktiv
+- URL-Modi: relativ, **Extern-Automatik** über Home-Assistant-`external_url`, manuelle Basis-URL
+- Anzeige von Home-Assistant-`external_url` und `internal_url`
+- separater URL-Test für Person- und Post-Sound
+- separater Sound-Test über exakt denselben `media_player.play_media`-Pfad wie die automatische Erkennung
+- Fehler behoben: Laufzeit-Soundauswahl verwendet jetzt tatsächlich die gespeicherten Sound-Einstellungen statt nur der Startwerte aus `config.yaml`
+
 ## 1.6.15
 
 - Sound-Testseite wieder vollständig aus der Ingress-Weboberfläche entfernt
