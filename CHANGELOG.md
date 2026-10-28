@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.9
+
+- Soundwiedergabe an das Verhalten einer funktionierenden Home-Assistant-Automation angepasst
+- `/local/sounds/...` wird standardmäßig unverändert an `media_player.play_media` übergeben
+- neue Option `sound_absolute_url`: nur bei Bedarf absolute Sound-URL erzeugen
+- Standard-`media_content_type` für MP3 von `music` auf `audio/mpeg` geändert
+- absolute URL bleibt optional mit Priorität: `sound_base_url` → `external_url` → `internal_url`
+- verbessert insbesondere die Wiedergabe über Browser Mod / Browser-Mediaplayer auf iPad
+
 ## 1.6.8
 
 - Sound-URL-Auflösung verbessert: `external_url` wird jetzt vor `internal_url` bevorzugt
