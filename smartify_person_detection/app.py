@@ -791,6 +791,21 @@ def play_detection_sound(kind, force=False):
         return False
 
     sound = _resolve_sound_content_id(raw_sound, settings=settings)
+    if not sound:
+        mode = str(settings.get("url_mode", "relative") or "relative")
+        if mode == "external_auto":
+            print(
+                f"Sound: {kind} nicht abgespielt – Extern-Automatik aktiv, "
+                "aber Home Assistant liefert keine external_url."
+            )
+        elif mode == "manual":
+            print(
+                f"Sound: {kind} nicht abgespielt – manuelle Basis-URL fehlt "
+                "oder konnte nicht aufgeloest werden."
+            )
+        else:
+            print(f"Sound: {kind} konnte nicht aufgeloest werden.")
+        return False
 
     payload = {
         "entity_id": media_player,
