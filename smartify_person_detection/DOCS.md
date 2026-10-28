@@ -106,7 +106,6 @@ Eine zweite Weboberfläche **Sound & Zeit** wurde ergänzt. Die ROI-/Kalibrierse
 Unterstützte Topics:
 
 - `<prefix>/person_reset` – nur Person
-- `<prefix>/person/reset` – Legacy-Alias für nur Person
 - `<prefix>/post_reset` – nur Post
 - `<prefix>/reset` – Person und Post gemeinsam
 
@@ -118,3 +117,8 @@ Auto-Reset:
 - `post_auto_reset: true` → Post wird nach `binary_sensor_on_seconds` zurückgesetzt.
 - Ist der jeweilige Auto-Reset deaktiviert, bleibt der Sensor auf ON, bis ein manueller Reset oder ein Mitternachtsreset erfolgt.
 - `reset_binaries_at_midnight: true` setzt Person und Post beim ersten Hauptschleifendurchlauf nach dem lokalen Datumswechsel auf OFF; gleichzeitig werden die Tageszähler zurückgesetzt.
+
+
+## Änderung 1.6.18
+
+Die Reset-Topics wurden auf genau drei Varianten bereinigt: `person_reset`, `post_reset` und `reset`. Der vorübergehende Legacy-Alias `person/reset` wurde wieder entfernt.
