@@ -586,41 +586,18 @@ def validate_configured_sounds():
             _notify_sound_problem(kind, _sound_missing_message(kind))
 
 
-def publish_sound_select_states():
-    available = _scan_sound_files()
-    with sound_selection_lock:
-        current = dict(sound_selection)
-
-    for kind, topic, configured in (
-        ("person", SOUND_PERSON_SELECT_STATE_TOPIC, PERSON_SOUND),
-        ("post", SOUND_POST_SELECT_STATE_TOPIC, POST_SOUND),
-    ):
-        selected = str(current.get(kind, "") or "").strip()
-        if selected not in available:
-            selected = _normalize_sound_choice(configured, available=available)
-        if selected not in available:
-            selected = SOUND_SELECT_NONE
-        c.publish(topic, selected, retain=True)
-
-
 def set_sound_selection(kind, value):
     if kind not in ("person", "post"):
         raise ValueError("Unbekannte Sound-Auswahl.")
     available = _scan_sound_files()
     value = str(value or "").strip()
 
-    if value == SOUND_SELECT_NONE:
+    if not value or value == SOUND_SELECT_NONE:
         with sound_selection_lock:
             sound_selection.pop(kind, None)
         _save_sound_selection()
-        topic = (
-            SOUND_PERSON_SELECT_STATE_TOPIC
-            if kind == "person"
-            else SOUND_POST_SELECT_STATE_TOPIC
-        )
-        c.publish(topic, SOUND_SELECT_NONE, retain=True)
         validate_configured_sounds()
-        print(f"Sound-Auswahl {kind}: nicht gewaehlt")
+        print(f"Sound-Auswahl {kind}: App-Konfiguration verwenden")
         return
 
     if value not in available:
@@ -629,12 +606,6 @@ def set_sound_selection(kind, value):
     with sound_selection_lock:
         sound_selection[kind] = value
     _save_sound_selection()
-    topic = (
-        SOUND_PERSON_SELECT_STATE_TOPIC
-        if kind == "person"
-        else SOUND_POST_SELECT_STATE_TOPIC
-    )
-    c.publish(topic, value, retain=True)
     _dismiss_sound_problem(kind)
     print(f"Sound-Auswahl {kind}: {value}")
 
@@ -826,10 +797,6 @@ SOUND_PERSON_STATE_TOPIC = f"{PREFIX}/sound/person/state"
 SOUND_PERSON_COMMAND_TOPIC = f"{PREFIX}/sound/person/set"
 SOUND_POST_STATE_TOPIC = f"{PREFIX}/sound/post/state"
 SOUND_POST_COMMAND_TOPIC = f"{PREFIX}/sound/post/set"
-SOUND_PERSON_SELECT_STATE_TOPIC = f"{PREFIX}/sound/person_file/state"
-SOUND_PERSON_SELECT_COMMAND_TOPIC = f"{PREFIX}/sound/person_file/set"
-SOUND_POST_SELECT_STATE_TOPIC = f"{PREFIX}/sound/post_file/state"
-SOUND_POST_SELECT_COMMAND_TOPIC = f"{PREFIX}/sound/post_file/set"
 
 
 # ---------------------------------------------------------
@@ -1529,54 +1496,18 @@ def discovery():
         info.wait_for_publish(timeout=3)
         print(f"MQTT Discovery Sound-Switch bereit: {default_entity_id}")
 
-    sound_files = _scan_sound_files()
-    if sound_files:
-        for oid, name, default_entity_id, state_topic, command_topic in (
-            (
-                "person_file",
-                "Person-Sounddatei",
-                "select.smartify_person_detection_person_sound_file",
-                SOUND_PERSON_SELECT_STATE_TOPIC,
-                SOUND_PERSON_SELECT_COMMAND_TOPIC,
-            ),
-            (
-                "post_file",
-                "Post-Sounddatei",
-                "select.smartify_person_detection_post_sound_file",
-                SOUND_POST_SELECT_STATE_TOPIC,
-                SOUND_POST_SELECT_COMMAND_TOPIC,
-            ),
-        ):
-            config = {
-                "name": name,
-                "unique_id": f"smartify_person_detection_{oid}",
-                "default_entity_id": default_entity_id,
-                "state_topic": state_topic,
-                "command_topic": command_topic,
-                "options": [SOUND_SELECT_NONE] + sound_files,
-                "availability_topic": avail,
-                "icon": "mdi:music-note",
-                "device": dev,
-            }
-            info = c.publish(
-                f"{DISC}/select/smartify_person_detection/{oid}/config",
-                json.dumps(config),
-                retain=True,
-            )
-            info.wait_for_publish(timeout=3)
-            print(f"MQTT Discovery Sound-Auswahl bereit: {default_entity_id}")
-    else:
-        c.publish(
-            f"{DISC}/select/smartify_person_detection/person_file/config",
-            "",
-            retain=True,
-        )
-        c.publish(
-            f"{DISC}/select/smartify_person_detection/post_file/config",
-            "",
-            retain=True,
-        )
-        print("Sound: keine Audio-Dateien unter /homeassistant/www/sounds/ gefunden.")
+    # Die Dateiauswahl erfolgt ab 1.6.12 auf der eigenen App-Seite.
+    # Alte MQTT-Select-Entities aus 1.6.10/1.6.11 werden entfernt.
+    c.publish(
+        f"{DISC}/select/smartify_person_detection/person_file/config",
+        "",
+        retain=True,
+    )
+    c.publish(
+        f"{DISC}/select/smartify_person_detection/post_file/config",
+        "",
+        retain=True,
+    )
 
     # Test-Buttons gehoeren ab 1.6.12 nicht mehr als HA-Entities in MQTT Discovery.
     # Alte retained Discovery-Eintraege aus 1.6.11 werden aktiv entfernt.
@@ -3424,8 +3355,7 @@ class DoorCalibrationHandler(BaseHTTPRequestHandler):
                     with sound_selection_lock:
                         sound_selection.pop(kind, None)
                     _save_sound_selection()
-                    publish_sound_select_states()
-                    validate_configured_sounds()
+                                validate_configured_sounds()
                 self._json({"ok": True, "status": sound_test_status_payload()})
             except Exception as e:
                 self._json({"error": str(e)}, 400)
@@ -3621,14 +3551,6 @@ def on_message(client, userdata, msg):
         set_sound_switch(sound_commands[msg.topic], payload == "ON")
         return
 
-    if msg.topic == SOUND_PERSON_SELECT_COMMAND_TOPIC:
-        set_sound_selection("person", msg.payload.decode().strip())
-        return
-
-    if msg.topic == SOUND_POST_SELECT_COMMAND_TOPIC:
-        set_sound_selection("post", msg.payload.decode().strip())
-        return
-
     if msg.topic == POST_RESET_TOPIC and payload == "RESET":
         print("Post abgeholt: separater Post-Reset empfangen.")
         if post_timer:
@@ -3713,8 +3635,6 @@ def connected(
         client.subscribe(SOUND_MASTER_COMMAND_TOPIC)
         client.subscribe(SOUND_PERSON_COMMAND_TOPIC)
         client.subscribe(SOUND_POST_COMMAND_TOPIC)
-        client.subscribe(SOUND_PERSON_SELECT_COMMAND_TOPIC)
-        client.subscribe(SOUND_POST_SELECT_COMMAND_TOPIC)
         publish_sound_switch_states()
         publish_sound_select_states()
         validate_configured_sounds()
