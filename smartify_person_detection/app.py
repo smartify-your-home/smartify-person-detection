@@ -858,7 +858,6 @@ vertical2_attributes_topic = f"{PREFIX}/vertical2/attributes"
 
 RESET_TOPIC = f"{PREFIX}/reset"
 PERSON_RESET_TOPIC = f"{PREFIX}/person_reset"
-PERSON_RESET_LEGACY_TOPIC = f"{PREFIX}/person/reset"
 POST_RESET_TOPIC = f"{PREFIX}/post_reset"
 
 SOUND_MASTER_STATE_TOPIC = f"{PREFIX}/sound/master/state"
@@ -3133,7 +3132,7 @@ img.addEventListener('load',render);img.addEventListener('error',()=>{msg.textCo
 
 
 class DoorCalibrationHandler(BaseHTTPRequestHandler):
-    server_version = "SmartifyPersonDetectionUI/1.6.17"
+    server_version = "SmartifyPersonDetectionUI/1.6.18"
 
     def log_message(self, fmt, *args):
         print(
@@ -3594,7 +3593,7 @@ def on_message(client, userdata, msg):
         set_sound_switch(sound_commands[msg.topic], payload == "ON")
         return
 
-    if msg.topic in (PERSON_RESET_TOPIC, PERSON_RESET_LEGACY_TOPIC) and payload == "RESET":
+    if msg.topic == PERSON_RESET_TOPIC and payload == "RESET":
         print(f"Person-Reset empfangen auf {msg.topic}.")
         if person_timer:
             person_timer.cancel()
@@ -3684,7 +3683,6 @@ def connected(
 
         client.subscribe(RESET_TOPIC)
         client.subscribe(PERSON_RESET_TOPIC)
-        client.subscribe(PERSON_RESET_LEGACY_TOPIC)
         client.subscribe(POST_RESET_TOPIC)
         client.subscribe(SOUND_MASTER_COMMAND_TOPIC)
         client.subscribe(SOUND_PERSON_COMMAND_TOPIC)
@@ -3694,8 +3692,8 @@ def connected(
 
         print(
             "Reset-Topics abonniert: "
-            f"{RESET_TOPIC}, {PERSON_RESET_TOPIC}, {PERSON_RESET_LEGACY_TOPIC}, "
-            f"{POST_RESET_TOPIC}; Sound-Schalter bereit."
+            f"{RESET_TOPIC}, {PERSON_RESET_TOPIC}, {POST_RESET_TOPIC}; "
+            "Sound-Schalter bereit."
         )
 
     else:
