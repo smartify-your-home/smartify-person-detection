@@ -43,10 +43,9 @@ Der vollständige Changelog befindet sich direkt bei der App unter **Changelog**
 
 ## Sound-URL-Auflösung
 
-Für Sounddateien unter `/local/...` gilt folgende Priorität:
+Für Sounddateien unter `/local/...` gilt ab 1.6.9:
 
-1. manuell konfigurierte `sound_base_url`
-2. Home-Assistant `external_url`
-3. Home-Assistant `internal_url`
+- `sound_absolute_url: false` (Standard): der relative Pfad `/local/sounds/...` wird unverändert an `media_player.play_media` übergeben. Das entspricht dem Verhalten einer normalen Home-Assistant-Automation und ist besonders für Browser Mod geeignet.
+- `sound_absolute_url: true`: die App erzeugt eine absolute URL. Priorität: manuelle `sound_base_url`, danach `external_url`, danach `internal_url`.
 
-Damit erhalten extern verbundene Clients bevorzugt eine HTTPS-fähige externe Adresse. Im App-Protokoll wird ausgegeben, welche Basis-URL tatsächlich verwendet wurde.
+Für MP3 ist `sound_media_content_type` standardmäßig `audio/mpeg`.
