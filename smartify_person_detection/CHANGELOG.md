@@ -4,6 +4,7 @@
 
 - MQTT-Testbutton-Entities aus Home Assistant wieder entfernt
 - alte retained MQTT-Discovery-Einträge der 1.6.11-Testbuttons werden automatisch gelöscht
+- die in 1.6.10/1.6.11 verwendeten MQTT-Select-Entities für Sounddateien werden ebenfalls entfernt; die Auswahl erfolgt jetzt direkt auf der App-Seite
 - eigene App-Seite **Sound testen** ergänzt, getrennt von ROI/Bildbereiche & Kalibrierung
 - App-Weboberfläche startet jetzt mit Auswahl zwischen **Sound testen** und **Bildbereiche & Kalibrierung**
 - Sound-Testseite zeigt die aktuell geladene Konfiguration und alle gefundenen Audiodateien
