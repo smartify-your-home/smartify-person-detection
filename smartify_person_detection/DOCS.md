@@ -22,7 +22,7 @@ Die Sound-Konfiguration erfolgt auf der normalen App-Konfigurationsseite. Dort s
 - `sound_media_content_type`
 - `sound_base_url`
 
-Sounddateien unter `/homeassistant/www/sounds/` sind über `/local/sounds/...` erreichbar.
+Sounddateien unter `/homeassistant/www/` sind über `/local/...` erreichbar.
 
 Die App veröffentlicht drei MQTT-Switches:
 
@@ -45,7 +45,7 @@ Der vollständige Changelog befindet sich direkt bei der App unter **Changelog**
 
 Für Sounddateien unter `/local/...` gilt ab 1.6.9:
 
-- `sound_absolute_url: false` (Standard): der relative Pfad `/local/sounds/...` wird unverändert an `media_player.play_media` übergeben. Das entspricht dem Verhalten einer normalen Home-Assistant-Automation und ist besonders für Browser Mod geeignet.
+- `sound_absolute_url: false` (Standard): der relative Pfad `/local/...` wird unverändert an `media_player.play_media` übergeben. Das entspricht dem Verhalten einer normalen Home-Assistant-Automation und ist besonders für Browser Mod geeignet.
 - `sound_absolute_url: true`: die App erzeugt eine absolute URL. Priorität: manuelle `sound_base_url`, danach `external_url`, danach `internal_url`.
 
 Für MP3 ist `sound_media_content_type` standardmäßig `audio/mpeg`.
@@ -53,7 +53,7 @@ Für MP3 ist `sound_media_content_type` standardmäßig `audio/mpeg`.
 
 ## Dynamische Sounddatei-Auswahl
 
-Die dynamische Sounddatei-Auswahl befindet sich auf der eigenen App-Seite **Sound testen**. Dort wird die Liste beim Öffnen aus `/homeassistant/www/sounds/` aufgebaut. Eine Auswahl setzt intern automatisch den passenden `/local/sounds/...`-Pfad.
+Die dynamische Sounddatei-Auswahl befindet sich auf der eigenen App-Seite **Sound testen**. Dort wird die Liste beim Öffnen aus `/homeassistant/www/` aufgebaut. Eine Auswahl setzt intern automatisch den passenden `/local/...`-Pfad.
 
 Wenn eine lokal konfigurierte Sounddatei fehlt, wird eine persistente Home-Assistant-Benachrichtigung erzeugt. Ein allein eingetragener Dateiname wird automatisch auf einen eindeutigen Treffer im Soundordner aufgelöst.
 
@@ -64,7 +64,7 @@ Die in 1.6.10/1.6.11 verwendeten MQTT-`select`-Entities für Person/Post werden 
 
 Die App-Weboberfläche enthält eine eigene Seite **Sound testen**, getrennt von **Bildbereiche & Kalibrierung**. Sie zeigt Mediaplayer, URL-Modus, Basis-URL, Medientyp, Zeitfenster, Sound-Freigaben sowie die effektiven Person-/Post-Dateien.
 
-Die Seite listet die gefundenen Dateien aus `/homeassistant/www/sounds/` und kann eine Datei als Laufzeit-Auswahl für Person bzw. Post übernehmen.
+Die Seite listet die gefundenen Dateien aus `/homeassistant/www/` und kann eine Datei als Laufzeit-Auswahl für Person bzw. Post übernehmen.
 
 Die beiden Test-Schaltflächen verwenden **denselben Codepfad wie die automatische Wiedergabe** und kein `force=True`:
 
@@ -82,3 +82,8 @@ Die in 1.6.11 angelegten MQTT-Testbutton-Entities werden beim Discovery-Lauf von
 ## Fehlerbehebung 1.6.13
 
 Ein Einrückungsfehler im neuen Sound-Auswahl-Endpunkt aus 1.6.12 wurde behoben. Die App startet damit wieder korrekt; die Sound-Testseite bleibt unverändert verfügbar.
+
+
+## Änderung 1.6.14
+
+Beim Öffnen der App-Weboberfläche wird die Seite **Sound testen** direkt angezeigt. Sie scannt jetzt den gesamten Home-Assistant-`/local/`-Bereich, also rekursiv `/homeassistant/www/`, nach MP3, WAV, OGG, M4A, AAC und FLAC. Dadurch erscheinen auch Audiodateien außerhalb von `/local/sounds/` automatisch in der Auswahlliste. Die Testknöpfe befinden sich direkt neben der Person- bzw. Post-Auswahl; **Bildbereiche & Kalibrierung** bleibt über einen separaten Link erreichbar.
