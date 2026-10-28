@@ -190,7 +190,10 @@ configuration:
     description: Optional, z. B. http://192.168.2.10:8123. Bei /local/... wird sonst automatisch internal_url/external_url von Home Assistant verwendet.
   sound_media_content_type:
     name: Sound Medientyp
-    description: 'media_content_type für media_player.play_media. Standard: music'
+    description: 'media_content_type für media_player.play_media. Für MP3 Standard: audio/mpeg'
+  sound_absolute_url:
+    name: Absolute Sound-URL verwenden
+    description: 'Aus: /local/sounds/... unverändert an Home Assistant übergeben (empfohlen für Browser Mod/iPad). Ein: absolute URL aus Basis-URL, external_url oder internal_url erzeugen. Standard: aus'
   sound_time_window_enabled:
     name: Sound-Zeitbereich aktiv
     description: 'Ton nur innerhalb des erlaubten Zeitbereichs ausgeben. Zeitfenster über Mitternacht werden unterstützt. Standard: aus'
