@@ -649,48 +649,6 @@ def sound_options_payload():
     }
 
 
-def sound_test_status_payload():
-    available = _scan_sound_files()
-    with sound_settings_lock:
-        settings = dict(sound_settings)
-    with sound_switch_lock:
-        switches = {
-            "master": bool(sound_switches.get("master", False)),
-            "person": bool(sound_switches.get("person", True)),
-            "post": bool(sound_switches.get("post", True)),
-        }
-    with sound_selection_lock:
-        selected = dict(sound_selection)
-
-    effective = {}
-    for kind in ("person", "post"):
-        raw = _effective_sound_choice(kind)
-        effective[kind] = {
-            "selected": str(selected.get(kind, "") or ""),
-            "configured": POST_SOUND if kind == "post" else PERSON_SOUND,
-            "effective": raw,
-            "available": bool(raw and (
-                raw.startswith(("http://", "https://")) or raw in available
-            )),
-            "resolved": _resolve_sound_content_id(raw, settings=settings) if raw else "",
-        }
-
-    return {
-        "media_player": str(settings.get("media_player", "") or ""),
-        "base_url": str(settings.get("base_url", "") or ""),
-        "absolute_url": bool(settings.get("absolute_url", False)),
-        "media_content_type": str(settings.get("media_content_type", "") or ""),
-        "time_window_enabled": bool(settings.get("time_window_enabled", False)),
-        "time_start": str(settings.get("time_start", "") or ""),
-        "time_end": str(settings.get("time_end", "") or ""),
-        "time_allowed_now": bool(sound_time_allowed(settings=settings)),
-        "switches": switches,
-        "sound_files": available,
-        "person": effective["person"],
-        "post": effective["post"],
-    }
-
-
 def play_detection_sound(kind, force=False):
     """Konfigurierten Ton fuer 'person' oder 'post' abspielen.
 
@@ -2946,108 +2904,6 @@ def door_worker():
 # Haustuer: Ingress-Kalibrieroberflaeche
 # ---------------------------------------------------------
 
-APP_HOME_HTML = r'''<!doctype html>
-<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Smartify Person Detection</title>
-<style>
-:root{color-scheme:dark;background:#111;color:#eee;font-family:system-ui,sans-serif}*{box-sizing:border-box}body{margin:0;padding:18px;background:#111;color:#eee}main{max-width:760px;margin:auto}.card{display:block;text-decoration:none;color:inherit;background:#1d1d1d;border:1px solid #333;border-radius:14px;padding:18px;margin:14px 0}.card:hover{border-color:#666;background:#242424}.title{font-size:1.15rem;font-weight:700;margin-bottom:6px}.hint{color:#bbb;line-height:1.4}
-</style></head><body><main>
-<h2>Smartify Person Detection</h2>
-<p class="hint">Werkzeuge der App. Die eigentliche App-Konfiguration bleibt auf der normalen Home-Assistant-Seite <strong>Konfiguration</strong>.</p>
-<a class="card" id="soundLink" href="#"><div class="title">🔊 Sound testen</div><div class="hint">Aktuelle Sound-Konfiguration anzeigen, Audiodatei auswählen und Person-/Post-Ton mit exakt demselben Ablauf wie bei der automatischen Erkennung testen.</div></a>
-<a class="card" id="calLink" href="#"><div class="title">▣ Bildbereiche & Kalibrierung</div><div class="hint">Kamerabild, Personenbereich, Haustür und Garagentor-Kanten einstellen und kalibrieren.</div></a>
-<script>
-var base=window.location.pathname.replace(/\/$/,'');
-document.getElementById('soundLink').href=base+'/sound-test';
-document.getElementById('calLink').href=base+'/calibration';
-</script></main></body></html>'''
-
-SOUND_TEST_HTML = r'''<!doctype html>
-<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Smartify Person Detection – Sound testen</title>
-<style>
-:root{color-scheme:dark;background:#111;color:#eee;font-family:system-ui,sans-serif}*{box-sizing:border-box}body{margin:0;padding:14px;background:#111;color:#eee}main{max-width:900px;margin:auto}.panel{background:#1d1d1d;border:1px solid #333;border-radius:12px;padding:14px;margin:12px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px 18px}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0}button{font:inherit;padding:10px 14px;border:0;border-radius:9px;background:#2f6fed;color:white;cursor:pointer;min-height:42px}button.secondary{background:#444}select{width:100%;font:inherit;padding:9px;background:#222;color:#eee;border:1px solid #555;border-radius:7px}code{overflow-wrap:anywhere}.hint{color:#bbb;line-height:1.4}.ok{color:#9fe8a7}.bad{color:#ff9d9d}.back{color:#9bc1ff;text-decoration:none}#msg{min-height:1.5em;margin-top:10px}
-</style></head><body><main>
-<a id="calibrationLink" class="back" href="#">▣ Bildbereiche & Kalibrierung</a>
-<h2>Sound testen</h2>
-<div class="panel">
-<div class="hint">Diese Seite verwendet die aktuell geladene App-Konfiguration. Alle Audio-Dateien unter <code>/local/</code> werden automatisch vorgeschlagen. Nach Änderungen auf der Home-Assistant-Seite <strong>Konfiguration</strong> die App neu starten, damit die neuen Werte geladen sind.</div>
-<div class="grid" style="margin-top:12px">
-<div><strong>Mediaplayer</strong><br><code id="player">-</code></div>
-<div><strong>Basis-URL</strong><br><code id="baseurl">-</code></div>
-<div><strong>Medientyp</strong><br><code id="ctype">-</code></div>
-<div><strong>URL-Modus</strong><br><span id="urlmode">-</span></div>
-<div><strong>Zeitfenster</strong><br><span id="time">-</span></div>
-<div><strong>Freigaben</strong><br><span id="switches">-</span></div>
-</div></div>
-<div class="panel"><h3>Person-Ton</h3>
-<label>Audiodatei<select id="personFile"></select></label>
-<div class="hint">Effektiver Pfad: <code id="personEffective">-</code></div>
-<div class="row"><button id="personSave" class="secondary">Auswahl übernehmen</button><button id="personTest">Person-Ton testen</button></div>
-</div>
-<div class="panel"><h3>Post-Ton</h3>
-<label>Audiodatei<select id="postFile"></select></label>
-<div class="hint">Effektiver Pfad: <code id="postEffective">-</code></div>
-<div class="row"><button id="postSave" class="secondary">Auswahl übernehmen</button><button id="postTest">Post-Ton testen</button></div>
-</div>
-<div id="msg" aria-live="polite"></div>
-<div class="hint">Der Test läuft exakt über denselben Codepfad wie später automatisch: Sound gesamt → Person/Post-Freigabe → Zeitfenster → gewählte Datei → Pfadauflösung → Mediaplayer → <code>media_player.play_media</code>. Es wird nichts überbrückt.</div>
-<script>
-var $=function(id){return document.getElementById(id);};
-var here=window.location.pathname.replace(/\/$/,'');
-var root=here.replace(/\/sound-test$/,'');
-$('calibrationLink').href=(root||here)+'/calibration';
-function endpoint(n){
-  var apiBase=here.endsWith('/sound-test')?here:(here+'/sound-test');
-  return apiBase+'/api/'+n;
-}
-async function jfetch(url,opt){opt=opt||{};var r=await fetch(url,opt);var j=await r.json().catch(function(){return {};});if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j;}
-function optionList(sel,files,current,configured){
-  sel.innerHTML='';
-  var none=document.createElement('option');none.value='';none.textContent='— App-Konfiguration verwenden —';sel.appendChild(none);
-  files.forEach(function(f){var o=document.createElement('option');o.value=f;o.textContent=f;sel.appendChild(o);});
-  sel.value=(current&&files.indexOf(current)>=0)?current:'';
-  sel.title=configured||'';
-}
-async function load(){
-  try{
-    var s=await jfetch(endpoint('sound_test_status'));
-    $('player').textContent=s.media_player||'nicht konfiguriert';
-    $('baseurl').textContent=s.base_url||'(automatisch / relativer Pfad)';
-    $('ctype').textContent=s.media_content_type||'-';
-    $('urlmode').textContent=s.absolute_url?'absolute URL':'relativer /local/-Pfad';
-    $('time').textContent=s.time_window_enabled?(s.time_start+'–'+s.time_end+' · '+(s.time_allowed_now?'aktuell erlaubt':'aktuell gesperrt')):'ganztägig erlaubt';
-    $('switches').textContent='Gesamt '+(s.switches.master?'EIN':'AUS')+' · Person '+(s.switches.person?'EIN':'AUS')+' · Post '+(s.switches.post?'EIN':'AUS');
-    optionList($('personFile'),s.sound_files,s.person.selected,s.person.configured);
-    optionList($('postFile'),s.sound_files,s.post.selected,s.post.configured);
-    $('personEffective').textContent=s.person.resolved||s.person.effective||'keine Datei';
-    $('postEffective').textContent=s.post.resolved||s.post.effective||'keine Datei';
-  }catch(e){$('msg').className='bad';$('msg').textContent='Fehler: '+e.message;}
-}
-async function save(kind){
-  var value=$(kind+'File').value;
-  try{
-    await jfetch(endpoint('sound_select'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:kind,value:value})});
-    $('msg').className='ok';$('msg').textContent=(kind==='person'?'Person':'Post')+'-Auswahl übernommen.';
-    await load();
-  }catch(e){$('msg').className='bad';$('msg').textContent='Fehler: '+e.message;}
-}
-async function test(kind){
-  $('msg').className='';$('msg').textContent='Teste '+(kind==='person'?'Person':'Post')+'-Ton …';
-  try{
-    var r=await jfetch(endpoint('sound_test'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:kind})});
-    $('msg').className=r.ok?'ok':'bad';
-    $('msg').textContent=r.ok?'Wiedergabe-Aufruf erfolgreich ausgeführt.':'Test wurde nicht abgespielt. Details stehen im App-Protokoll.';
-    await load();
-  }catch(e){$('msg').className='bad';$('msg').textContent='Fehler: '+e.message;}
-}
-$('personSave').onclick=function(){save('person');};
-$('postSave').onclick=function(){save('post');};
-$('personTest').onclick=function(){test('person');};
-$('postTest').onclick=function(){test('post');};
-load();
-</script></main></body></html>'''
-
 DOOR_UI_HTML = r'''<!doctype html>
 <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Smartify Person Detection – Bildbereiche & Kalibrierung</title>
 <style>
@@ -3088,7 +2944,7 @@ img.addEventListener('load',render);img.addEventListener('error',()=>{msg.textCo
 
 
 class DoorCalibrationHandler(BaseHTTPRequestHandler):
-    server_version = "SmartifyPersonDetectionUI/1.6.14"
+    server_version = "SmartifyPersonDetectionUI/1.6.15"
 
     def log_message(self, fmt, *args):
         print(
@@ -3150,20 +3006,6 @@ class DoorCalibrationHandler(BaseHTTPRequestHandler):
             return
 
         path = self._path()
-
-        if path.endswith("/sound-test/api/sound_test_status") or path.endswith("/api/sound_test_status"):
-            self._json(sound_test_status_payload())
-            return
-
-        if path.endswith("/sound-test"):
-            html = SOUND_TEST_HTML.encode("utf-8")
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.send_header("Cache-Control", "no-store")
-            self.send_header("Content-Length", str(len(html)))
-            self.end_headers()
-            self.wfile.write(html)
-            return
 
         if path.endswith("/api/status") or path == "/api/status":
             if not self._require_active_ui():
@@ -3309,15 +3151,12 @@ class DoorCalibrationHandler(BaseHTTPRequestHandler):
             self._json({"error": "Nicht gefunden."}, 404)
             return
 
-        if path.endswith("/calibration"):
-            activate_calibration_ui()
-            print(
-                f"Haustuer-UI: Kalibrierzugriff fuer "
-                f"{DOOR_CALIBRATION_UI_MINUTES} Minuten freigeschaltet."
-            )
-            html = DOOR_UI_HTML.encode("utf-8")
-        else:
-            html = SOUND_TEST_HTML.encode("utf-8")
+        activate_calibration_ui()
+        print(
+            f"Haustuer-UI: Kalibrierzugriff fuer "
+            f"{DOOR_CALIBRATION_UI_MINUTES} Minuten freigeschaltet."
+        )
+        html = DOOR_UI_HTML.encode("utf-8")
 
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -3331,38 +3170,6 @@ class DoorCalibrationHandler(BaseHTTPRequestHandler):
             return
 
         path = self._path()
-
-        if path.endswith("/sound-test/api/sound_test") or path.endswith("/api/sound_test"):
-            try:
-                data = self._body_json()
-                kind = str(data.get("kind", "")).strip().lower()
-                if kind not in ("person", "post"):
-                    raise ValueError("kind muss person oder post sein.")
-                print(f"Sound-Test {kind} gestartet – gleicher Ablauf wie automatische Erkennung.")
-                ok = bool(play_detection_sound(kind, force=False))
-                self._json({"ok": ok, "status": sound_test_status_payload()})
-            except Exception as e:
-                self._json({"error": str(e)}, 400)
-            return
-
-        if path.endswith("/sound-test/api/sound_select") or path.endswith("/api/sound_select"):
-            try:
-                data = self._body_json()
-                kind = str(data.get("kind", "")).strip().lower()
-                value = str(data.get("value", "") or "").strip()
-                if kind not in ("person", "post"):
-                    raise ValueError("kind muss person oder post sein.")
-                if value:
-                    set_sound_selection(kind, value)
-                else:
-                    with sound_selection_lock:
-                        sound_selection.pop(kind, None)
-                    _save_sound_selection()
-                    validate_configured_sounds()
-                self._json({"ok": True, "status": sound_test_status_payload()})
-            except Exception as e:
-                self._json({"error": str(e)}, 400)
-            return
 
         if not self._require_active_ui():
             return
