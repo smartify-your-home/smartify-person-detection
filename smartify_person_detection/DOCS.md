@@ -60,24 +60,13 @@ Wenn eine lokal konfigurierte Sounddatei fehlt, wird eine persistente Home-Assis
 Die in 1.6.10/1.6.11 verwendeten MQTT-`select`-Entities für Person/Post werden ab 1.6.12 per leerem retained Discovery-Payload entfernt.
 
 
-## Sound-Testseite
+## Sound-Konfiguration
 
-Die App-Weboberfläche enthält eine eigene Seite **Sound testen**, getrennt von **Bildbereiche & Kalibrierung**. Sie zeigt Mediaplayer, URL-Modus, Basis-URL, Medientyp, Zeitfenster, Sound-Freigaben sowie die effektiven Person-/Post-Dateien.
+Alle Sound-Einstellungen werden ausschließlich über die normale Home-Assistant-App-Seite **Konfiguration** vorgenommen. Die Ingress-Weboberfläche bleibt ausschließlich für ROI, Bildbereiche und Tür-/Garagentor-Kalibrierung reserviert.
 
-Die Seite listet die gefundenen Dateien aus `/homeassistant/www/` und kann eine Datei als Laufzeit-Auswahl für Person bzw. Post übernehmen.
+Die native Supervisor-/App-Konfigurationsseite unterstützt keine dynamischen Dateilisten aus `/local/` und keine benutzerdefinierten Aktionsbuttons. Daher können dort keine automatisch erzeugten Sound-Dropdowns oder Testknöpfe eingebettet werden.
 
-Die beiden Test-Schaltflächen verwenden **denselben Codepfad wie die automatische Wiedergabe** und kein `force=True`:
-
-1. globaler Sound-Schalter muss EIN sein
-2. der jeweilige Person-/Post-Schalter muss EIN sein
-3. der konfigurierte Zeitbereich muss aktuell erlauben
-4. die ausgewählte/konfigurierte Sounddatei muss verfügbar sein
-5. dieselbe Pfadauflösung wird verwendet
-6. derselbe konfigurierte Mediaplayer wird angesprochen
-7. derselbe Aufruf von `media_player.play_media` wird ausgeführt
-
-Die in 1.6.11 angelegten MQTT-Testbutton-Entities werden beim Discovery-Lauf von 1.6.12 wieder entfernt.
-
+Die App validiert eingetragene lokale Sounddateien beim Start und erzeugt bei fehlenden Dateien eine persistente Home-Assistant-Warnmeldung. Ein eindeutiger Dateiname kann weiterhin automatisch auf den passenden `/local/...`-Pfad aufgelöst werden.
 
 ## Fehlerbehebung 1.6.13
 
@@ -87,3 +76,8 @@ Ein Einrückungsfehler im neuen Sound-Auswahl-Endpunkt aus 1.6.12 wurde behoben.
 ## Änderung 1.6.14
 
 Beim Öffnen der App-Weboberfläche wird die Seite **Sound testen** direkt angezeigt. Sie scannt jetzt den gesamten Home-Assistant-`/local/`-Bereich, also rekursiv `/homeassistant/www/`, nach MP3, WAV, OGG, M4A, AAC und FLAC. Dadurch erscheinen auch Audiodateien außerhalb von `/local/sounds/` automatisch in der Auswahlliste. Die Testknöpfe befinden sich direkt neben der Person- bzw. Post-Auswahl; **Bildbereiche & Kalibrierung** bleibt über einen separaten Link erreichbar.
+
+
+## Änderung 1.6.15
+
+Die Sound-Testseite wurde aus Ingress entfernt. Die Weboberfläche ist wieder ausschließlich für ROI, Bildbereiche sowie Tür-/Garagentor-Kalibrierung vorgesehen.
