@@ -63,14 +63,13 @@ Die Liste wird beim App-Start aus `/homeassistant/www/sounds/` aufgebaut. Eine A
 Wenn eine lokal konfigurierte Sounddatei fehlt, wird eine persistente Home-Assistant-Benachrichtigung erzeugt. Ein allein eingetragener Dateiname wird automatisch auf einen eindeutigen Treffer im Soundordner aufgelöst.
 
 
-## Sound-Testbuttons
+## Sound-Testseite
 
-Über MQTT Discovery werden zwei Home-Assistant-Buttons bereitgestellt:
+Die App-Weboberfläche enthält eine eigene Seite **Sound testen**, getrennt von **Bildbereiche & Kalibrierung**. Sie zeigt Mediaplayer, URL-Modus, Basis-URL, Medientyp, Zeitfenster, Sound-Freigaben sowie die effektiven Person-/Post-Dateien.
 
-- `button.smartify_person_detection_person_sound_test`
-- `button.smartify_person_detection_post_sound_test`
+Die Seite listet die gefundenen Dateien aus `/homeassistant/www/sounds/` und kann eine Datei als Laufzeit-Auswahl für Person bzw. Post übernehmen.
 
-Die Buttons verwenden **denselben Codepfad wie die automatische Wiedergabe**. Es gibt keinen Test-Sonderweg und kein `force=True`:
+Die beiden Test-Schaltflächen verwenden **denselben Codepfad wie die automatische Wiedergabe** und kein `force=True`:
 
 1. globaler Sound-Schalter muss EIN sein
 2. der jeweilige Person-/Post-Schalter muss EIN sein
@@ -80,4 +79,4 @@ Die Buttons verwenden **denselben Codepfad wie die automatische Wiedergabe**. Es
 6. derselbe konfigurierte Mediaplayer wird angesprochen
 7. derselbe Aufruf von `media_player.play_media` wird ausgeführt
 
-Wenn ein Schritt blockiert, wird der konkrete Grund im App-Protokoll ausgegeben.
+Die in 1.6.11 angelegten MQTT-Testbutton-Entities werden beim Discovery-Lauf von 1.6.12 wieder entfernt.
