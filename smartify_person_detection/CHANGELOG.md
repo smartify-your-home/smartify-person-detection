@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.6.17
+
+- Person-only Reset ergänzt: `<prefix>/person_reset`
+- Legacy-Topic `<prefix>/person/reset` wird ebenfalls wieder unterstützt
+- Gesamtreset `<prefix>/reset` und Post-Reset `<prefix>/post_reset` bleiben erhalten
+- kritischen MQTT-Bug behoben: veralteter Aufruf `publish_sound_select_states()` konnte den MQTT-`on_connect`-Callback mit `NameError` abbrechen
+- dadurch konnten MQTT-Nachrichten wie manuelle Resets nach dem Verbindungsaufbau nicht zuverlässig verarbeitet werden
+- Reset-Subscriptions und Start-Log erweitert
+- Auto-Reset-/Mitternachtsverhalten dokumentiert
+
 ## 1.6.16
 
 - zweite, getrennte Weboberfläche **Sound & Zeit** ergänzt
