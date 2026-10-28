@@ -58,7 +58,7 @@ Die Sound-Optionen stehen dort zusammenhängend in dieser Reihenfolge:
 - `sound_absolute_url` – standardmäßig **aus**; `/local/...` wird dann unverändert an Home Assistant übergeben
 - `sound_base_url` – nur für absolute Sound-URLs optional
 
-Für Browser-Mod-/Browser-Mediaplayer wird standardmäßig genau wie in einer Home-Assistant-Automation der relative Pfad `/local/sounds/...` verwendet. Nur wenn `sound_absolute_url` aktiviert ist, wird daraus eine absolute URL.
+Für Browser-Mod-/Browser-Mediaplayer wird standardmäßig genau wie in einer Home-Assistant-Automation der relative Pfad `/local/...` verwendet. Nur wenn `sound_absolute_url` aktiviert ist, wird daraus eine absolute URL.
 
 Ein Post-Treffer ist zugleich eine Person; pro Ereignis wird trotzdem nur **ein** Ton ausgegeben,
 wobei der **Post-Ton Vorrang** hat. Zeitfenster über Mitternacht, z. B. `22:00` bis `07:00`,
@@ -70,15 +70,15 @@ und Sounddateien dort als Textfelder eingetragen. Die Beschreibungen enthalten p
 
 ### Sounddatei-Auswahl direkt in der App
 
-Die dynamische Dateiliste befindet sich auf der App-Seite **Sound testen** und nicht als zusätzliche Home-Assistant-Entity. Dort werden alle unterstützten Audiodateien unter `/homeassistant/www/sounds/` vorgeschlagen und bei der Auswahl automatisch als vollständiger `/local/sounds/...`-Pfad verwendet. Unterstützt werden MP3, WAV, OGG, M4A, AAC und FLAC.
+Die dynamische Dateiliste befindet sich auf der App-Seite **Sound testen** und nicht als zusätzliche Home-Assistant-Entity. Dort werden alle unterstützten Audiodateien unter `/homeassistant/www/` vorgeschlagen und bei der Auswahl automatisch als vollständiger `/local/...`-Pfad verwendet. Unterstützt werden MP3, WAV, OGG, M4A, AAC und FLAC.
 
-Ist eine in der App-Konfiguration eingetragene lokale Sounddatei nicht vorhanden, erzeugt die App zusätzlich eine **persistente Home-Assistant-Warnmeldung** und schreibt den Fehler ins App-Protokoll. Wird nur ein Dateiname eingetragen und dieser ist im Soundordner eindeutig vorhanden, wird der korrekte `/local/sounds/...`-Pfad automatisch aufgelöst.
+Ist eine in der App-Konfiguration eingetragene lokale Sounddatei nicht vorhanden, erzeugt die App zusätzlich eine **persistente Home-Assistant-Warnmeldung** und schreibt den Fehler ins App-Protokoll. Wird nur ein Dateiname eingetragen und dieser ist im Soundordner eindeutig vorhanden, wird der korrekte `/local/...`-Pfad automatisch aufgelöst.
 
 Die kurzzeitig in 1.6.10/1.6.11 angelegten MQTT-`select`-Entities für die Dateiauswahl werden ab 1.6.12 automatisch aus MQTT Discovery entfernt.
 
 ### Sound-Test direkt in der App
 
-Die App-Weboberfläche hat eine eigene Seite **Sound testen**, getrennt von **Bildbereiche & Kalibrierung**. Dort werden die aktuell geladenen Sound-Einstellungen angezeigt, gefundene Audiodateien können für Person/Post ausgewählt werden und beide Sounds lassen sich direkt testen.
+Beim Öffnen der App-Weboberfläche wird **Sound testen** jetzt direkt angezeigt; **Bildbereiche & Kalibrierung** ist separat über einen Link erreichbar. Dort werden die aktuell geladenen Sound-Einstellungen angezeigt, gefundene Audiodateien können für Person/Post ausgewählt werden und beide Sounds lassen sich direkt testen.
 
 Der Test durchläuft **exakt denselben technischen Ablauf wie eine echte automatische Erkennung**: globaler Sound-Schalter → Person/Post-Schalter → erlaubtes Zeitfenster → aktuell ausgewählte bzw. konfigurierte Sounddatei → Pfadauflösung → konfigurierter Mediaplayer → `media_player.play_media`. Es gibt keinen Test-Sonderweg.
 
@@ -112,4 +112,4 @@ Die App-Weboberfläche startet mit einer Werkzeugauswahl. **Sound testen** und *
 
 ## Version
 
-Aktuell: **1.6.13**
+Aktuell: **1.6.14**
