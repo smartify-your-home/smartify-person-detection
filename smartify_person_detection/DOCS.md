@@ -49,3 +49,15 @@ Für Sounddateien unter `/local/...` gilt ab 1.6.9:
 - `sound_absolute_url: true`: die App erzeugt eine absolute URL. Priorität: manuelle `sound_base_url`, danach `external_url`, danach `internal_url`.
 
 Für MP3 ist `sound_media_content_type` standardmäßig `audio/mpeg`.
+
+
+## Dynamische Sounddatei-Auswahl
+
+Die native Home-Assistant-App-Konfigurationsseite unterstützt keine dynamisch aus dem Dateisystem erzeugten Dropdowns. Deshalb stellt Smartify Person Detection zwei MQTT-`select`-Entities bereit:
+
+- `select.smartify_person_detection_person_sound_file`
+- `select.smartify_person_detection_post_sound_file`
+
+Die Liste wird beim App-Start aus `/homeassistant/www/sounds/` aufgebaut. Eine Auswahl setzt intern automatisch den passenden `/local/sounds/...`-Pfad.
+
+Wenn eine lokal konfigurierte Sounddatei fehlt, wird eine persistente Home-Assistant-Benachrichtigung erzeugt. Ein allein eingetragener Dateiname wird automatisch auf einen eindeutigen Treffer im Soundordner aufgelöst.
