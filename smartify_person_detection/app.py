@@ -91,7 +91,8 @@ SOUND_MEDIA_PLAYER = str(g("sound_media_player", "")).strip()
 PERSON_SOUND = str(g("person_sound", "")).strip()
 POST_SOUND = str(g("post_sound", "")).strip()
 SOUND_BASE_URL = str(g("sound_base_url", "")).strip().rstrip("/")
-SOUND_MEDIA_CONTENT_TYPE = str(g("sound_media_content_type", "music")).strip() or "music"
+SOUND_MEDIA_CONTENT_TYPE = str(g("sound_media_content_type", "audio/mpeg")).strip() or "audio/mpeg"
+SOUND_ABSOLUTE_URL = bool(g("sound_absolute_url", False))
 SOUND_TIME_WINDOW_ENABLED = bool(g("sound_time_window_enabled", False))
 SOUND_TIME_START = str(g("sound_time_start", "07:00")).strip() or "07:00"
 SOUND_TIME_END = str(g("sound_time_end", "22:00")).strip() or "22:00"
@@ -178,6 +179,7 @@ def _load_sound_settings():
         "post_sound": POST_SOUND,
         "base_url": SOUND_BASE_URL,
         "media_content_type": SOUND_MEDIA_CONTENT_TYPE,
+        "absolute_url": bool(SOUND_ABSOLUTE_URL),
         "time_window_enabled": bool(SOUND_TIME_WINDOW_ENABLED),
         "time_start": _valid_hhmm(SOUND_TIME_START, "07:00"),
         "time_end": _valid_hhmm(SOUND_TIME_END, "22:00"),
@@ -315,7 +317,17 @@ def _resolve_sound_content_id(value, settings=None):
     if not value:
         return ""
 
+    if settings is None:
+        with sound_settings_lock:
+            settings = dict(sound_settings)
+
     if value.startswith("/local/"):
+        # Browser-/Browser-Mod-Mediaplayer funktionieren wie eine normale
+        # HA-Automation am zuverlässigsten mit dem relativen /local/-Pfad.
+        # Eine absolute URL ist deshalb nur optional.
+        if not bool(settings.get("absolute_url", False)):
+            return value
+
         base = _homeassistant_base_url(settings=settings)
         if base:
             return base + value
@@ -523,8 +535,8 @@ def play_detection_sound(kind, force=False):
         "entity_id": media_player,
         "media_content_id": sound,
         "media_content_type": str(
-            settings.get("media_content_type", "music")
-        ).strip() or "music",
+            settings.get("media_content_type", "audio/mpeg")
+        ).strip() or "audio/mpeg",
     }
 
     try:
@@ -2738,7 +2750,7 @@ img.addEventListener('load',render);img.addEventListener('error',()=>{msg.textCo
 
 
 class DoorCalibrationHandler(BaseHTTPRequestHandler):
-    server_version = "SmartifyPersonDetectionUI/1.6.8"
+    server_version = "SmartifyPersonDetectionUI/1.6.9"
 
     def log_message(self, fmt, *args):
         print(
