@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.18
+
+- Reset-Topics auf genau drei Varianten bereinigt
+- `<prefix>/person_reset` setzt nur Person auf OFF
+- `<prefix>/post_reset` setzt nur Post auf OFF
+- `<prefix>/reset` setzt Person und Post gemeinsam auf OFF
+- vorübergehenden Legacy-Alias `<prefix>/person/reset` wieder entfernt
+- MQTT-Subscriptions und Start-Log entsprechend bereinigt
+
 ## 1.6.17
 
 - Person-only Reset ergänzt: `<prefix>/person_reset`
