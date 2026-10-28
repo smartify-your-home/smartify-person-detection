@@ -121,7 +121,7 @@ Die normale Ingress-Hauptseite bleibt ausschließlich für Kamerabild, Personen-
 
 ## Version
 
-Aktuell: **1.6.17**
+Aktuell: **1.6.18**
 
 
 ### Manuelle MQTT-Resets
@@ -131,7 +131,5 @@ Die App unterstützt drei Reset-Arten:
 - `smartify_person_detection/person_reset` – nur Person auf OFF
 - `smartify_person_detection/post_reset` – nur Post auf OFF
 - `smartify_person_detection/reset` – Person und Post gemeinsam auf OFF
-
-Aus Kompatibilitätsgründen wird zusätzlich der ältere Topic `smartify_person_detection/person/reset` akzeptiert.
 
 Wenn `person_auto_reset` bzw. `post_auto_reset` deaktiviert sind, bleiben erkannte Sensoren auf ON, bis ein manueller Reset erfolgt oder – falls `reset_binaries_at_midnight` aktiv ist – beim ersten Hauptschleifendurchlauf nach dem Datumswechsel auf OFF gesetzt wird.
