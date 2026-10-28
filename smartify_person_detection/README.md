@@ -54,8 +54,11 @@ Die Sound-Optionen stehen dort zusammenhängend in dieser Reihenfolge:
 - `post_sound` – z. B. `/local/sounds/post.mp3`
 - `sound_time_window_enabled` – Zeitfenster aktivieren
 - `sound_time_start` / `sound_time_end`
-- `sound_media_content_type`
-- `sound_base_url` – optional
+- `sound_media_content_type` – für MP3 standardmäßig `audio/mpeg`
+- `sound_absolute_url` – standardmäßig **aus**; `/local/...` wird dann unverändert an Home Assistant übergeben
+- `sound_base_url` – nur für absolute Sound-URLs optional
+
+Für Browser-Mod-/Browser-Mediaplayer wird standardmäßig genau wie in einer Home-Assistant-Automation der relative Pfad `/local/sounds/...` verwendet. Nur wenn `sound_absolute_url` aktiviert ist, wird daraus eine absolute URL.
 
 Ein Post-Treffer ist zugleich eine Person; pro Ereignis wird trotzdem nur **ein** Ton ausgegeben,
 wobei der **Post-Ton Vorrang** hat. Zeitfenster über Mitternacht, z. B. `22:00` bis `07:00`,
@@ -95,4 +98,4 @@ App-Konfiguration wie Sound, RTSP und MQTT gehört nicht in dieses Menü.
 
 ## Version
 
-Aktuell: **1.6.8**
+Aktuell: **1.6.9**
