@@ -95,4 +95,4 @@ App-Konfiguration wie Sound, RTSP und MQTT gehört nicht in dieses Menü.
 
 ## Version
 
-Aktuell: **1.6.7**
+Aktuell: **1.6.8**
