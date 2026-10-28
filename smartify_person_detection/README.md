@@ -79,6 +79,15 @@ Die Optionen werden automatisch aus allen unterstützten Audiodateien unter `/ho
 
 Ist eine in der App-Konfiguration eingetragene lokale Sounddatei nicht vorhanden, erzeugt die App zusätzlich eine **persistente Home-Assistant-Warnmeldung** und schreibt den Fehler ins App-Protokoll. Wird nur ein Dateiname eingetragen und dieser ist im Soundordner eindeutig vorhanden, wird der korrekte `/local/sounds/...`-Pfad automatisch aufgelöst.
 
+### Sound-Test in Home Assistant
+
+Die App veröffentlicht zwei MQTT-`button`-Entities:
+
+- `button.smartify_person_detection_person_sound_test`
+- `button.smartify_person_detection_post_sound_test`
+
+Ein Tastendruck durchläuft **exakt denselben technischen Ablauf wie eine echte automatische Erkennung**: globaler Sound-Schalter → Person/Post-Schalter → erlaubtes Zeitfenster → aktuell ausgewählte bzw. konfigurierte Sounddatei → Pfadauflösung → konfigurierter Mediaplayer → `media_player.play_media`. Der Test umgeht keine Sperre. Ist z. B. das Zeitfenster geschlossen oder ein Sound-Schalter aus, bleibt der Test ebenfalls stumm und der Grund steht im App-Protokoll.
+
 ### Sound-Schalter in Home Assistant
 
 Über MQTT Discovery werden drei Schalter mit festen Standard-Entity-IDs angelegt:
@@ -109,4 +118,4 @@ App-Konfiguration wie Sound, RTSP und MQTT gehört nicht in dieses Menü.
 
 ## Version
 
-Aktuell: **1.6.10**
+Aktuell: **1.6.11**
