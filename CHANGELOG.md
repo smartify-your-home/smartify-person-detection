@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.15
+
+- Sound-Testseite wieder vollständig aus der Ingress-Weboberfläche entfernt
+- Ingress ist wieder ausschließlich für ROI, Bildbereiche und Tür-/Garagentor-Kalibrierung reserviert
+- Sound-Konfiguration bleibt ausschließlich auf der normalen Home-Assistant-App-Seite **Konfiguration**
+- Dateiprüfung für lokale Sounddateien bleibt aktiv und erzeugt bei fehlenden Dateien eine persistente HA-Warnmeldung
+- Dokumentation klargestellt: native App-Konfiguration unterstützt keine dynamischen Dateidropdowns und keine eigenen Testbuttons
+
 ## 1.6.14
 
 - **Sound testen** wird beim Öffnen der App-Weboberfläche jetzt direkt angezeigt
