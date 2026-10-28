@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.6.8
+
+- Sound-URL-Auflösung verbessert: `external_url` wird jetzt vor `internal_url` bevorzugt
+- manuell konfigurierte `sound_base_url` behält weiterhin höchste Priorität
+- Protokoll zeigt jetzt an, welche Basis-URL für die Soundwiedergabe verwendet wird
+- verbessert die Soundwiedergabe auf extern über HTTPS verbundenen Clients wie iPads
+
 ## 1.6.7
 
 - Home-Assistant-App-Changelog direkt im Add-on-Ordner ergänzt, damit der Changelog auch auf der App-Seite verfügbar ist
