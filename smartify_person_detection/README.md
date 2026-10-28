@@ -68,6 +68,17 @@ Die native Supervisor-App-Konfiguration kann keine dynamischen Vorschlagslisten 
 vorhandenen Home-Assistant-Entities oder aus dem Dateisystem erzeugen. Deshalb werden Mediaplayer
 und Sounddateien dort als Textfelder eingetragen. Die Beschreibungen enthalten passende Beispiele.
 
+### Sounddatei-Auswahl in Home Assistant
+
+Da die native Supervisor-Konfigurationsseite keine dynamischen Dateilisten anzeigen kann, veröffentlicht die App zwei MQTT-`select`-Entities:
+
+- `select.smartify_person_detection_person_sound_file`
+- `select.smartify_person_detection_post_sound_file`
+
+Die Optionen werden automatisch aus allen unterstützten Audiodateien unter `/homeassistant/www/sounds/` erzeugt. Bei der Auswahl wird der vollständige `/local/sounds/...`-Pfad automatisch verwendet. Unterstützt werden MP3, WAV, OGG, M4A, AAC und FLAC.
+
+Ist eine in der App-Konfiguration eingetragene lokale Sounddatei nicht vorhanden, erzeugt die App zusätzlich eine **persistente Home-Assistant-Warnmeldung** und schreibt den Fehler ins App-Protokoll. Wird nur ein Dateiname eingetragen und dieser ist im Soundordner eindeutig vorhanden, wird der korrekte `/local/sounds/...`-Pfad automatisch aufgelöst.
+
 ### Sound-Schalter in Home Assistant
 
 Über MQTT Discovery werden drei Schalter mit festen Standard-Entity-IDs angelegt:
@@ -98,4 +109,4 @@ App-Konfiguration wie Sound, RTSP und MQTT gehört nicht in dieses Menü.
 
 ## Version
 
-Aktuell: **1.6.9**
+Aktuell: **1.6.10**
