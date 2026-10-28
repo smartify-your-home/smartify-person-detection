@@ -77,3 +77,8 @@ Die beiden Test-Schaltflächen verwenden **denselben Codepfad wie die automatisc
 7. derselbe Aufruf von `media_player.play_media` wird ausgeführt
 
 Die in 1.6.11 angelegten MQTT-Testbutton-Entities werden beim Discovery-Lauf von 1.6.12 wieder entfernt.
+
+
+## Fehlerbehebung 1.6.13
+
+Ein Einrückungsfehler im neuen Sound-Auswahl-Endpunkt aus 1.6.12 wurde behoben. Die App startet damit wieder korrekt; die Sound-Testseite bleibt unverändert verfügbar.
