@@ -100,6 +100,7 @@ SOUND_SETTINGS_FILE = Path("/data/sound_settings.json")
 SOUND_SWITCH_STATE_FILE = Path("/data/sound_switches.json")
 SOUND_FILES_DIR = Path("/homeassistant/www/sounds")
 SOUND_SELECTION_FILE = Path("/data/sound_selection.json")
+SOUND_SELECT_NONE = "— nicht gewählt —"
 
 # Haustuer-Erkennung
 DOOR_ENABLED = bool(g("door_enabled", True))
@@ -567,9 +568,17 @@ def validate_configured_sounds():
     available = _scan_sound_files()
     for kind, configured in (("person", PERSON_SOUND), ("post", POST_SOUND)):
         configured = str(configured or "").strip()
+        with sound_selection_lock:
+            selected = str(sound_selection.get(kind, "") or "").strip()
+
+        if selected in available:
+            _dismiss_sound_problem(kind)
+            continue
+
         if not configured:
             _dismiss_sound_problem(kind)
             continue
+
         normalized = _normalize_sound_choice(configured, available=available)
         if normalized:
             _dismiss_sound_problem(kind)
@@ -590,7 +599,7 @@ def publish_sound_select_states():
         if selected not in available:
             selected = _normalize_sound_choice(configured, available=available)
         if selected not in available:
-            selected = available[0] if available else ""
+            selected = SOUND_SELECT_NONE
         c.publish(topic, selected, retain=True)
 
 
@@ -599,8 +608,24 @@ def set_sound_selection(kind, value):
         raise ValueError("Unbekannte Sound-Auswahl.")
     available = _scan_sound_files()
     value = str(value or "").strip()
+
+    if value == SOUND_SELECT_NONE:
+        with sound_selection_lock:
+            sound_selection.pop(kind, None)
+        _save_sound_selection()
+        topic = (
+            SOUND_PERSON_SELECT_STATE_TOPIC
+            if kind == "person"
+            else SOUND_POST_SELECT_STATE_TOPIC
+        )
+        c.publish(topic, SOUND_SELECT_NONE, retain=True)
+        validate_configured_sounds()
+        print(f"Sound-Auswahl {kind}: nicht gewaehlt")
+        return
+
     if value not in available:
         raise ValueError(f"Sounddatei nicht verfuegbar: {value}")
+
     with sound_selection_lock:
         sound_selection[kind] = value
     _save_sound_selection()
@@ -1478,7 +1503,7 @@ def discovery():
                 "default_entity_id": default_entity_id,
                 "state_topic": state_topic,
                 "command_topic": command_topic,
-                "options": sound_files,
+                "options": [SOUND_SELECT_NONE] + sound_files,
                 "availability_topic": avail,
                 "icon": "mdi:music-note",
                 "device": dev,
