@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.6.12
+
+- MQTT-Testbutton-Entities aus Home Assistant wieder entfernt
+- alte retained MQTT-Discovery-Einträge der 1.6.11-Testbuttons werden automatisch gelöscht
+- eigene App-Seite **Sound testen** ergänzt, getrennt von ROI/Bildbereiche & Kalibrierung
+- App-Weboberfläche startet jetzt mit Auswahl zwischen **Sound testen** und **Bildbereiche & Kalibrierung**
+- Sound-Testseite zeigt die aktuell geladene Konfiguration und alle gefundenen Audiodateien
+- Person-/Post-Datei kann auf der Testseite ausgewählt und der effektive Pfad direkt kontrolliert werden
+- Test verwendet weiterhin exakt denselben Playback-Codepfad wie die automatische Erkennung, ohne `force=True`
+
 ## 1.6.11
 
 - zwei Home-Assistant-Testbuttons für Person- und Post-Ton ergänzt
