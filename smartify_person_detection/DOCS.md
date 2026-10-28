@@ -61,3 +61,23 @@ Die native Home-Assistant-App-Konfigurationsseite unterstützt keine dynamisch a
 Die Liste wird beim App-Start aus `/homeassistant/www/sounds/` aufgebaut. Eine Auswahl setzt intern automatisch den passenden `/local/sounds/...`-Pfad.
 
 Wenn eine lokal konfigurierte Sounddatei fehlt, wird eine persistente Home-Assistant-Benachrichtigung erzeugt. Ein allein eingetragener Dateiname wird automatisch auf einen eindeutigen Treffer im Soundordner aufgelöst.
+
+
+## Sound-Testbuttons
+
+Über MQTT Discovery werden zwei Home-Assistant-Buttons bereitgestellt:
+
+- `button.smartify_person_detection_person_sound_test`
+- `button.smartify_person_detection_post_sound_test`
+
+Die Buttons verwenden **denselben Codepfad wie die automatische Wiedergabe**. Es gibt keinen Test-Sonderweg und kein `force=True`:
+
+1. globaler Sound-Schalter muss EIN sein
+2. der jeweilige Person-/Post-Schalter muss EIN sein
+3. der konfigurierte Zeitbereich muss aktuell erlauben
+4. die ausgewählte/konfigurierte Sounddatei muss verfügbar sein
+5. dieselbe Pfadauflösung wird verwendet
+6. derselbe konfigurierte Mediaplayer wird angesprochen
+7. derselbe Aufruf von `media_player.play_media` wird ausgeführt
+
+Wenn ein Schritt blockiert, wird der konkrete Grund im App-Protokoll ausgegeben.
