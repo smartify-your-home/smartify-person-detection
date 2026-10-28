@@ -190,7 +190,10 @@ configuration:
     description: Optional base URL. /local/... otherwise uses Home Assistant internal_url/external_url automatically.
   sound_media_content_type:
     name: Sound media content type
-    description: 'media_content_type passed to media_player.play_media. Default: music'
+    description: 'media_content_type passed to media_player.play_media. MP3 default: audio/mpeg'
+  sound_absolute_url:
+    name: Use absolute sound URL
+    description: 'Off: pass /local/sounds/... unchanged to Home Assistant (recommended for Browser Mod/iPad). On: build an absolute URL from base URL, external_url or internal_url. Default: off'
   sound_time_window_enabled:
     name: Enable sound time window
     description: 'Only play detection sounds inside the allowed time window. Overnight windows are supported. Default: off'
