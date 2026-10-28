@@ -172,9 +172,7 @@ def _valid_hhmm(value, fallback):
 
 
 def _load_sound_settings():
-    # Ab 1.6.6 ist ausschliesslich die native Home-Assistant-App-Konfiguration
-    # die Quelle fuer Mediaplayer, Sounddateien und Zeitfenster.
-    return {
+    defaults = {
         "enabled": bool(SOUND_ENABLED),
         "media_player": SOUND_MEDIA_PLAYER,
         "person_sound": PERSON_SOUND,
@@ -182,17 +180,55 @@ def _load_sound_settings():
         "base_url": SOUND_BASE_URL,
         "media_content_type": SOUND_MEDIA_CONTENT_TYPE,
         "absolute_url": bool(SOUND_ABSOLUTE_URL),
+        "url_mode": (
+            "manual" if SOUND_BASE_URL
+            else "external_auto" if SOUND_ABSOLUTE_URL
+            else "relative"
+        ),
         "time_window_enabled": bool(SOUND_TIME_WINDOW_ENABLED),
         "time_start": _valid_hhmm(SOUND_TIME_START, "07:00"),
         "time_end": _valid_hhmm(SOUND_TIME_END, "22:00"),
     }
+    try:
+        saved = json.loads(SOUND_SETTINGS_FILE.read_text(encoding="utf-8"))
+        if isinstance(saved, dict):
+            for key in (
+                "media_player", "person_sound", "post_sound", "base_url",
+                "media_content_type", "url_mode", "time_window_enabled",
+                "time_start", "time_end"
+            ):
+                if key in saved:
+                    defaults[key] = saved[key]
+    except Exception:
+        pass
+
+    defaults["media_player"] = str(defaults.get("media_player", "") or "").strip()
+    defaults["person_sound"] = str(defaults.get("person_sound", "") or "").strip()
+    defaults["post_sound"] = str(defaults.get("post_sound", "") or "").strip()
+    defaults["base_url"] = str(defaults.get("base_url", "") or "").strip().rstrip("/")
+    defaults["media_content_type"] = str(
+        defaults.get("media_content_type", "audio/mpeg") or "audio/mpeg"
+    ).strip()
+    mode = str(defaults.get("url_mode", "relative") or "relative").strip()
+    if mode not in ("relative", "external_auto", "manual"):
+        mode = "relative"
+    defaults["url_mode"] = mode
+    defaults["absolute_url"] = mode != "relative"
+    defaults["time_window_enabled"] = bool(defaults.get("time_window_enabled", False))
+    defaults["time_start"] = _valid_hhmm(defaults.get("time_start"), "07:00")
+    defaults["time_end"] = _valid_hhmm(defaults.get("time_end"), "22:00")
+    return defaults
 
 sound_settings = _load_sound_settings()
 
 
 def _save_sound_settings():
-    # Seit 1.6.6 werden Sound-Einstellungen nur ueber die native App-Konfiguration gespeichert.
-    return
+    with sound_settings_lock:
+        data = dict(sound_settings)
+    SOUND_SETTINGS_FILE.write_text(
+        json.dumps(data, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
 
 
 def _load_sound_switches():
@@ -267,50 +303,46 @@ def _ha_api_request(path, payload=None, timeout=10):
         return raw.decode("utf-8", errors="replace")
 
 
-def _homeassistant_base_url(settings=None):
-    """Erreichbare HA-Basis-URL fuer /local/-Sounds bestimmen.
+def _homeassistant_urls():
+    result = {"external_url": "", "internal_url": ""}
+    try:
+        cfg = _ha_api_request("/config", timeout=5)
+        if isinstance(cfg, dict):
+            result["external_url"] = str(cfg.get("external_url") or "").strip().rstrip("/")
+            result["internal_url"] = str(cfg.get("internal_url") or "").strip().rstrip("/")
+    except Exception as exc:
+        print(f"Sound: Home-Assistant-URLs konnten nicht automatisch ermittelt werden: {exc}")
+    return result
 
-    Prioritaet:
-    1. manuell konfigurierte Basis-URL
-    2. Home-Assistant external_url
-    3. Home-Assistant internal_url
-    """
+
+def _homeassistant_base_url(settings=None):
     global _HA_BASE_URL_CACHE
 
     if settings is None:
         with sound_settings_lock:
             settings = dict(sound_settings)
 
-    configured = str(settings.get("base_url", "")).strip().rstrip("/")
-    if configured:
-        print(f"Sound: verwende manuell konfigurierte Basis-URL: {configured}")
-        return configured
+    mode = str(settings.get("url_mode", "relative") or "relative").strip()
+    configured = str(settings.get("base_url", "") or "").strip().rstrip("/")
+
+    if mode == "manual":
+        if configured:
+            return configured
+        return ""
+
+    if mode == "relative":
+        return ""
 
     with _HA_BASE_URL_LOCK:
         if _HA_BASE_URL_CACHE is not None:
             return _HA_BASE_URL_CACHE
-
-        base = ""
-        source = ""
-        try:
-            cfg = _ha_api_request("/config", timeout=5)
-            if isinstance(cfg, dict):
-                external = str(cfg.get("external_url") or "").strip().rstrip("/")
-                internal = str(cfg.get("internal_url") or "").strip().rstrip("/")
-                if external:
-                    base = external
-                    source = "external_url"
-                elif internal:
-                    base = internal
-                    source = "internal_url"
-        except Exception as exc:
-            print(f"Sound: Home-Assistant-URL konnte nicht automatisch ermittelt werden: {exc}")
-
+        urls = _homeassistant_urls()
+        base = urls.get("external_url", "")
         _HA_BASE_URL_CACHE = base
         if base:
-            print(f"Sound: verwende Home-Assistant {source}: {base}")
+            print(f"Sound: Extern-Automatik verwendet Home-Assistant external_url: {base}")
         else:
-            print("Sound: keine Home-Assistant Basis-URL gefunden.")
+            print("Sound: Extern-Automatik aktiv, aber keine external_url in Home Assistant gesetzt.")
         return base
 
 
@@ -324,15 +356,14 @@ def _resolve_sound_content_id(value, settings=None):
             settings = dict(sound_settings)
 
     if value.startswith("/local/"):
-        # Browser-/Browser-Mod-Mediaplayer funktionieren wie eine normale
-        # HA-Automation am zuverlässigsten mit dem relativen /local/-Pfad.
-        # Eine absolute URL ist deshalb nur optional.
-        if not bool(settings.get("absolute_url", False)):
+        mode = str(settings.get("url_mode", "relative") or "relative").strip()
+        if mode == "relative":
             return value
 
         base = _homeassistant_base_url(settings=settings)
         if base:
             return base + value
+        return ""
 
     return value
 
@@ -414,30 +445,52 @@ def update_sound_settings(data):
     if not isinstance(data, dict):
         raise ValueError("Ungueltige Sound-Einstellungen.")
 
-    media_player = str(data.get("media_player", "")).strip()
+    media_player = str(data.get("media_player", "") or "").strip()
     if media_player and not re.fullmatch(r"media_player\.[a-z0-9_]+", media_player):
         raise ValueError("Mediaplayer muss eine media_player.* Entity sein.")
 
+    person_sound = str(data.get("person_sound", "") or "").strip()
+    post_sound = str(data.get("post_sound", "") or "").strip()
+    available = _scan_sound_files()
+    for label, value in (("Person-Ton", person_sound), ("Post-Ton", post_sound)):
+        if value and value.startswith("/local/") and value not in available:
+            raise ValueError(f"{label} ist nicht vorhanden: {value}")
+
+    mode = str(data.get("url_mode", "relative") or "relative").strip()
+    if mode not in ("relative", "external_auto", "manual"):
+        raise ValueError("URL-Modus ist ungueltig.")
+
+    base_url = str(data.get("base_url", "") or "").strip().rstrip("/")
+    if mode == "manual" and not re.match(r"^https?://", base_url):
+        raise ValueError("Bei manueller URL muss eine http:// oder https:// Basis-URL eingetragen sein.")
+
     with sound_settings_lock:
         sound_settings["media_player"] = media_player
-        sound_settings["person_sound"] = str(data.get("person_sound", "")).strip()
-        sound_settings["post_sound"] = str(data.get("post_sound", "")).strip()
-        sound_settings["base_url"] = str(data.get("base_url", "")).strip().rstrip("/")
+        sound_settings["person_sound"] = person_sound
+        sound_settings["post_sound"] = post_sound
+        sound_settings["base_url"] = base_url
+        sound_settings["url_mode"] = mode
+        sound_settings["absolute_url"] = mode != "relative"
         sound_settings["media_content_type"] = (
-            str(data.get("media_content_type", "music")).strip() or "music"
+            str(data.get("media_content_type", "audio/mpeg") or "audio/mpeg").strip()
         )
-        sound_settings["time_window_enabled"] = bool(
-            data.get("time_window_enabled", False)
-        )
-        sound_settings["time_start"] = _valid_hhmm(
-            data.get("time_start"), "07:00"
-        )
-        sound_settings["time_end"] = _valid_hhmm(
-            data.get("time_end"), "22:00"
-        )
+        sound_settings["time_window_enabled"] = bool(data.get("time_window_enabled", False))
+        sound_settings["time_start"] = _valid_hhmm(data.get("time_start"), "07:00")
+        sound_settings["time_end"] = _valid_hhmm(data.get("time_end"), "22:00")
+
     _save_sound_settings()
+
+    if "master" in data:
+        set_sound_switch("master", bool(data.get("master")))
+    if "person_enabled" in data:
+        set_sound_switch("person", bool(data.get("person_enabled")))
+    if "post_enabled" in data:
+        set_sound_switch("post", bool(data.get("post_enabled")))
+
     with _HA_BASE_URL_LOCK:
         _HA_BASE_URL_CACHE = None
+
+    validate_configured_sounds()
 
 
 def _scan_sound_files():
@@ -506,26 +559,18 @@ def _normalize_sound_choice(value, available=None):
 
 
 def _effective_sound_choice(kind):
-    key = "post" if kind == "post" else "person"
-    configured = POST_SOUND if key == "post" else PERSON_SOUND
+    key = "post_sound" if kind == "post" else "person_sound"
+    with sound_settings_lock:
+        configured = str(sound_settings.get(key, "") or "").strip()
     available = _scan_sound_files()
-
-    with sound_selection_lock:
-        selected = str(sound_selection.get(key, "") or "").strip()
-
-    if selected and selected in available:
-        return selected
-
-    normalized = _normalize_sound_choice(configured, available=available)
-    if normalized:
-        return normalized
-
-    return ""
+    return _normalize_sound_choice(configured, available=available)
 
 
 def _sound_missing_message(kind):
-    configured = POST_SOUND if kind == "post" else PERSON_SOUND
-    if not str(configured or "").strip():
+    key = "post_sound" if kind == "post" else "person_sound"
+    with sound_settings_lock:
+        configured = str(sound_settings.get(key, "") or "").strip()
+    if not configured:
         return ""
     return (
         f"Die konfigurierte Sounddatei fuer {kind} ist nicht verfuegbar: {configured}. "
@@ -566,20 +611,17 @@ def _dismiss_sound_problem(kind):
 
 def validate_configured_sounds():
     available = _scan_sound_files()
-    for kind, configured in (("person", PERSON_SOUND), ("post", POST_SOUND)):
-        configured = str(configured or "").strip()
-        with sound_selection_lock:
-            selected = str(sound_selection.get(kind, "") or "").strip()
-
-        if selected in available:
+    with sound_settings_lock:
+        configured = {
+            "person": str(sound_settings.get("person_sound", "") or "").strip(),
+            "post": str(sound_settings.get("post_sound", "") or "").strip(),
+        }
+    for kind in ("person", "post"):
+        value = configured[kind]
+        if not value:
             _dismiss_sound_problem(kind)
             continue
-
-        if not configured:
-            _dismiss_sound_problem(kind)
-            continue
-
-        normalized = _normalize_sound_choice(configured, available=available)
+        normalized = _normalize_sound_choice(value, available=available)
         if normalized:
             _dismiss_sound_problem(kind)
         else:
@@ -591,23 +633,15 @@ def set_sound_selection(kind, value):
         raise ValueError("Unbekannte Sound-Auswahl.")
     available = _scan_sound_files()
     value = str(value or "").strip()
-
-    if not value or value == SOUND_SELECT_NONE:
-        with sound_selection_lock:
-            sound_selection.pop(kind, None)
-        _save_sound_selection()
-        validate_configured_sounds()
-        print(f"Sound-Auswahl {kind}: App-Konfiguration verwenden")
-        return
-
-    if value not in available:
+    if value and value not in available:
         raise ValueError(f"Sounddatei nicht verfuegbar: {value}")
 
-    with sound_selection_lock:
-        sound_selection[kind] = value
-    _save_sound_selection()
-    _dismiss_sound_problem(kind)
-    print(f"Sound-Auswahl {kind}: {value}")
+    key = "post_sound" if kind == "post" else "person_sound"
+    with sound_settings_lock:
+        sound_settings[key] = value
+    _save_sound_settings()
+    validate_configured_sounds()
+    print(f"Sound-Auswahl {kind}: {value or 'leer'}")
 
 
 def sound_options_payload():
@@ -640,13 +674,74 @@ def sound_options_payload():
             "post": bool(sound_switches.get("post", True)),
         }
 
+    urls = _homeassistant_urls()
     return {
         "settings": settings,
         "switches": switches,
         "media_players": media_players,
         "sound_files": sound_files,
         "time_allowed_now": sound_time_allowed(settings=settings),
+        "ha_urls": urls,
+        "resolved": {
+            "person": _resolve_sound_content_id(settings.get("person_sound", ""), settings=settings),
+            "post": _resolve_sound_content_id(settings.get("post_sound", ""), settings=settings),
+        },
     }
+
+
+def test_sound_url(kind):
+    if kind not in ("person", "post"):
+        raise ValueError("kind muss person oder post sein.")
+    with sound_settings_lock:
+        settings = dict(sound_settings)
+    raw = _effective_sound_choice(kind)
+    if not raw:
+        raise ValueError(f"Kein {kind}-Ton konfiguriert.")
+    resolved = _resolve_sound_content_id(raw, settings=settings)
+    if not resolved:
+        mode = settings.get("url_mode", "relative")
+        if mode == "external_auto":
+            raise ValueError("Extern-Automatik: Home Assistant liefert keine external_url.")
+        raise ValueError("Sound-URL konnte nicht aufgeloest werden.")
+
+    if resolved.startswith("/local/"):
+        return {
+            "ok": True,
+            "kind": kind,
+            "url": resolved,
+            "mode": "relative",
+            "message": "Relativer /local/-Pfad ist vorhanden. Fuer einen externen URL-Test Extern-Automatik waehlen.",
+        }
+
+    req = Request(
+        resolved,
+        headers={
+            "User-Agent": "Smartify-Person-Detection/1.6.16",
+            "Range": "bytes=0-1023",
+        },
+        method="GET",
+    )
+    try:
+        with urlopen(req, timeout=10) as response:
+            first = response.read(1024)
+            return {
+                "ok": 200 <= int(response.status) < 400,
+                "kind": kind,
+                "url": resolved,
+                "mode": settings.get("url_mode", "relative"),
+                "http_status": int(response.status),
+                "content_type": str(response.headers.get("Content-Type", "")),
+                "bytes_read": len(first),
+                "message": "URL serverseitig erreichbar.",
+            }
+    except Exception as exc:
+        return {
+            "ok": False,
+            "kind": kind,
+            "url": resolved,
+            "mode": settings.get("url_mode", "relative"),
+            "message": f"URL nicht erreichbar: {type(exc).__name__}: {exc}",
+        }
 
 
 def play_detection_sound(kind, force=False):
@@ -2904,13 +2999,90 @@ def door_worker():
 # Haustuer: Ingress-Kalibrieroberflaeche
 # ---------------------------------------------------------
 
+SOUND_SETTINGS_HTML = r'''<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smartify Person Detection – Sound & Zeit</title>
+<style>
+:root{color-scheme:dark;background:#111;color:#eee;font-family:system-ui,sans-serif}*{box-sizing:border-box}body{margin:0;padding:14px;background:#111;color:#eee}main{max-width:900px;margin:auto}.panel{background:#1d1d1d;border:1px solid #333;border-radius:12px;padding:14px;margin:12px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px 16px}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0}label{display:block}input,select{width:100%;font:inherit;padding:9px;background:#222;color:#eee;border:1px solid #555;border-radius:7px;margin-top:4px}input[type=checkbox]{width:auto;margin-right:6px}button,.nav{font:inherit;padding:10px 14px;border:0;border-radius:9px;background:#2f6fed;color:#fff;cursor:pointer;min-height:42px;text-decoration:none;display:inline-flex;align-items:center}button.secondary,.nav.secondary{background:#444}.hint{color:#bbb;font-size:.92em;line-height:1.4}.ok{color:#9fe8a7}.bad{color:#ff9d9d}code{overflow-wrap:anywhere}#msg{min-height:1.5em;margin:10px 0}.status{padding:8px 10px;border-radius:8px;background:#161616;margin-top:8px}
+</style></head><body><main>
+<div class="row" style="justify-content:space-between"><h2 style="margin:0">Sound & Zeit</h2><a id="roiLink" class="nav secondary" href="#">ROI & Kalibrierung</a></div>
+<div class="panel"><h3>Wiedergabe</h3><div class="grid">
+<label>Mediaplayer<select id="player"></select></label>
+<label>Medientyp<input id="ctype" value="audio/mpeg"></label>
+<label>URL-Modus<select id="urlMode"><option value="relative">Relativer /local/-Pfad</option><option value="external_auto">Extern-Automatik (HA external_url)</option><option value="manual">Manuelle Basis-URL</option></select></label>
+<label>Manuelle Basis-URL<input id="baseUrl" placeholder="https://deine-ha-domain"></label>
+</div>
+<div class="hint" style="margin-top:8px">Extern-Automatik verwendet ausschließlich die in Home Assistant hinterlegte <code>external_url</code>. Damit lässt sich genau der externe HTTPS-Pfad prüfen.</div>
+<div class="status">HA external_url: <code id="externalUrl">-</code><br>HA internal_url: <code id="internalUrl">-</code></div>
+</div>
+<div class="panel"><h3>Sounddateien</h3><div class="grid">
+<label>Person-Ton<select id="personSound"></select></label>
+<label>Post-Ton<select id="postSound"></select></label>
+</div>
+<div class="row">
+<button id="personUrl" class="secondary">Person-URL testen</button><button id="personPlay">Person-Ton testen</button>
+<button id="postUrl" class="secondary">Post-URL testen</button><button id="postPlay">Post-Ton testen</button>
+</div>
+<div class="status">Person effektiv: <code id="personResolved">-</code><br>Post effektiv: <code id="postResolved">-</code></div>
+</div>
+<div class="panel"><h3>Freigaben & Zeit</h3>
+<div class="row"><label><input id="master" type="checkbox">Sound gesamt</label><label><input id="personEnabled" type="checkbox">Person-Ton aktiv</label><label><input id="postEnabled" type="checkbox">Post-Ton aktiv</label></div>
+<div class="grid"><label><input id="timeEnabled" type="checkbox">Zeitbereich aktiv</label><label>Von<input id="timeStart" type="time"></label><label>Bis<input id="timeEnd" type="time"></label></div>
+<div class="status">Aktuell: <strong id="timeState">-</strong></div>
+</div>
+<div class="row"><button id="save">Einstellungen speichern</button><button id="reload" class="secondary">Neu laden</button></div>
+<div id="msg" aria-live="polite"></div>
+<div class="hint">Die Testknöpfe verwenden denselben <code>media_player.play_media</code>-Ablauf wie die automatische Erkennung. Sound-Schalter und Zeitfenster werden dabei nicht umgangen.</div>
+<script>
+(function(){
+var $=function(id){return document.getElementById(id);};
+var here=window.location.pathname.replace(/\/$/,'');
+var root=here.replace(/\/sound-settings$/,'');
+$('roiLink').href=root||'./';
+function ep(name){return here+'/api/'+name;}
+async function jf(url,opt){opt=opt||{};var r=await fetch(url,opt);var j=await r.json().catch(function(){return {};});if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j;}
+function setOptions(el,items,value,labelFn){
+  el.innerHTML='';
+  items.forEach(function(item){var o=document.createElement('option');var v=typeof item==='string'?item:item.entity_id;o.value=v;o.textContent=labelFn?labelFn(item):v;el.appendChild(o);});
+  if(value && Array.from(el.options).some(function(o){return o.value===value;})){el.value=value;}
+}
+async function load(){
+  try{
+    var d=await jf(ep('sound_options')),s=d.settings||{},w=d.switches||{};
+    setOptions($('player'),d.media_players||[],s.media_player,function(x){return x.name+' · '+x.entity_id;});
+    if(s.media_player && !Array.from($('player').options).some(function(o){return o.value===s.media_player;})){var p=document.createElement('option');p.value=s.media_player;p.textContent=s.media_player+' (konfiguriert)';$('player').appendChild(p);$('player').value=s.media_player;}
+    setOptions($('personSound'),d.sound_files||[],s.person_sound);
+    setOptions($('postSound'),d.sound_files||[],s.post_sound);
+    $('ctype').value=s.media_content_type||'audio/mpeg';$('urlMode').value=s.url_mode||'relative';$('baseUrl').value=s.base_url||'';
+    $('master').checked=!!w.master;$('personEnabled').checked=!!w.person;$('postEnabled').checked=!!w.post;
+    $('timeEnabled').checked=!!s.time_window_enabled;$('timeStart').value=s.time_start||'07:00';$('timeEnd').value=s.time_end||'22:00';
+    $('timeState').textContent=d.time_allowed_now?'Sound zeitlich erlaubt':'Sound zeitlich gesperrt';
+    $('externalUrl').textContent=(d.ha_urls&&d.ha_urls.external_url)||'(nicht gesetzt)';$('internalUrl').textContent=(d.ha_urls&&d.ha_urls.internal_url)||'(nicht gesetzt)';
+    $('personResolved').textContent=(d.resolved&&d.resolved.person)||'(nicht aufgelöst)';$('postResolved').textContent=(d.resolved&&d.resolved.post)||'(nicht aufgelöst)';
+    $('msg').textContent='';
+  }catch(e){$('msg').className='bad';$('msg').textContent='Fehler beim Laden: '+e.message;}
+}
+function data(){return {media_player:$('player').value,person_sound:$('personSound').value,post_sound:$('postSound').value,media_content_type:$('ctype').value,url_mode:$('urlMode').value,base_url:$('baseUrl').value,time_window_enabled:$('timeEnabled').checked,time_start:$('timeStart').value,time_end:$('timeEnd').value,master:$('master').checked,person_enabled:$('personEnabled').checked,post_enabled:$('postEnabled').checked};}
+async function save(){
+  try{await jf(ep('sound_save'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data())});$('msg').className='ok';$('msg').textContent='Sound- und Zeit-Einstellungen gespeichert.';await load();}catch(e){$('msg').className='bad';$('msg').textContent='Speichern fehlgeschlagen: '+e.message;}
+}
+async function urlTest(kind){
+  try{await save();var r=await jf(ep('sound_url_test'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:kind})});$('msg').className=r.ok?'ok':'bad';$('msg').textContent=(kind==='person'?'Person':'Post')+' URL: '+r.message+' '+(r.url||'');if(r.url&&/^https?:/.test(r.url)){window.open(r.url,'_blank');}}catch(e){$('msg').className='bad';$('msg').textContent='URL-Test fehlgeschlagen: '+e.message;}
+}
+async function play(kind){
+  try{await save();var r=await jf(ep('sound_play_test'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:kind})});$('msg').className=r.ok?'ok':'bad';$('msg').textContent=r.ok?(kind==='person'?'Person':'Post')+'-Ton wurde über den automatischen Ablauf ausgelöst.':'Ton wurde nicht abgespielt. Grund siehe App-Protokoll.';}catch(e){$('msg').className='bad';$('msg').textContent='Sound-Test fehlgeschlagen: '+e.message;}
+}
+$('save').onclick=save;$('reload').onclick=load;$('personUrl').onclick=function(){urlTest('person');};$('postUrl').onclick=function(){urlTest('post');};$('personPlay').onclick=function(){play('person');};$('postPlay').onclick=function(){play('post');};load();
+})();
+</script></main></body></html>'''
+
 DOOR_UI_HTML = r'''<!doctype html>
 <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Smartify Person Detection – Bildbereiche & Kalibrierung</title>
 <style>
 :root{color-scheme:dark;background:#111;color:#eee;font-family:system-ui,sans-serif}*{box-sizing:border-box}body{margin:0;padding:14px;background:#111;color:#eee}main{max-width:1100px;margin:auto}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px 16px}.panel{background:#1d1d1d;border:1px solid #333;border-radius:12px;padding:12px;margin:12px 0;line-height:1.35}.panel h3{margin:0 0 8px;font-size:1.05rem}button{font:inherit;padding:10px 14px;border:0;border-radius:9px;background:#2f6fed;color:#fff;cursor:pointer;min-height:42px}button.secondary{background:#444}button.active{outline:2px solid #fff}input{font:inherit;padding:7px;background:#222;color:#eee;border:1px solid #555;border-radius:6px;max-width:100%}code{font-size:.92em;overflow-wrap:anywhere}#msg{min-height:1.4em;color:#9fe8a7;margin:8px 0}.hint{color:#bbb;font-size:.9em;margin:8px 0;line-height:1.35}
 #stage{position:relative;width:100%;line-height:0;user-select:none;touch-action:none;background:#000;border-radius:10px;overflow:hidden;min-height:80px}#cam{display:block;width:100%;height:auto}.roi{position:absolute;box-sizing:border-box;cursor:move;touch-action:none;border:2px solid;background:rgba(255,255,255,.07);transform-origin:center center}.roi.fixed{border-color:#00e5ff;background:rgba(0,229,255,.10)}.roi.moving{border-color:#ffb300;background:rgba(255,179,0,.10)}.roi.garageFixed{border-color:#76ff03;background:rgba(118,255,3,.10)}.roi.garageMoving{border-color:#e040fb;background:rgba(224,64,251,.10)}.roi.garage2Fixed{border-color:#40c4ff;background:rgba(64,196,255,.10)}.roi.garage2Moving{border-color:#ff4081;background:rgba(255,64,129,.10)}.roi.personArea{border-color:#7c4dff;background:rgba(124,77,255,.10)}.label{position:absolute;left:2px;top:2px;line-height:1.2;font:700 11px system-ui;padding:2px 4px;border-radius:4px;color:#000;pointer-events:none}.fixed .label{background:#00e5ff}.moving .label{background:#ffb300}.garageFixed .label{background:#76ff03}.garageMoving .label{background:#e040fb}.garage2Fixed .label{background:#40c4ff}.garage2Moving .label{background:#ff4081}.personArea .label{background:#b388ff}.handle{position:absolute;width:14px;height:14px;border:0;background:transparent!important;border-radius:0;box-sizing:border-box}.nw{left:-7px;top:-7px;cursor:nwse-resize}.ne{right:-7px;top:-7px;cursor:nesw-resize}.sw{left:-7px;bottom:-7px;cursor:nesw-resize}.se{right:-7px;bottom:-7px;cursor:nwse-resize}.rotate{left:50%;top:-24px;width:18px;height:6px;transform:translateX(-50%);cursor:grab;border-radius:0;background:currentColor!important}.fixed .rotate{color:#00e5ff}.moving .rotate{color:#ffb300}.garageFixed .rotate{color:#76ff03}.garageMoving .rotate{color:#e040fb}.garage2Fixed .rotate{color:#40c4ff}.garage2Moving .rotate{color:#ff4081}.fixedTxt{color:#00e5ff}.movingTxt{color:#ffb300}.verticalFixedTxt{color:#76ff03}.verticalMovingTxt{color:#e040fb}.vertical2FixedTxt{color:#40c4ff}.vertical2MovingTxt{color:#ff4081}.personTxt{color:#b388ff}.statusline{font-size:.96rem;margin:3px 0;overflow-wrap:anywhere}@media(max-width:600px){body{padding:8px}.row button{flex:1 1 44%}.panel{padding:10px}.grid{grid-template-columns:1fr}.row label{width:100%}.row input{width:100%}}
 </style></head><body><main>
-<h2 style="margin:0 0 12px">Smartify Person Detection – Bildbereiche & Kalibrierung</h2>
+<div class="row" style="justify-content:space-between"><h2 style="margin:0">Smartify Person Detection – Bildbereiche & Kalibrierung</h2><button id="soundSettingsNav" class="secondary">Sound & Zeit</button></div>
 <div class="panel"><h3>Kamera & Kalibrierstatus</h3><div class="grid"><div><strong>Kamera:</strong> <code id="camera">-</code></div><div><strong>Kalibrierzugriff:</strong> <span id="uitime">-</span></div><div><strong>Pause:</strong> <span id="pause">-</span></div><div><strong>Ansicht:</strong> <span id="viewName">Normalbild</span></div></div></div>
 <div class="row"><button id="reload">Aktuelles Bild laden</button><button id="edge" class="secondary">Tür-Kantenansicht</button><button id="gEdgeTop" class="secondary" style="display:none">Garage 1 Kantenansicht</button><button id="g2EdgeTop" class="secondary" style="display:none">Garage 2 Kantenansicht</button><button id="personToggle" class="secondary">Personen-Bildbereich</button></div><div id="msg" aria-live="polite"></div>
 <div id="stage"><img id="cam" alt="Aktuelles Kamerabild"><div id="fixedRoi" class="roi fixed"><span class="label">ZARGE</span><span class="handle nw" data-handle="nw"></span><span class="handle ne" data-handle="ne"></span><span class="handle sw" data-handle="sw"></span><span class="handle se" data-handle="se"></span><span class="handle rotate" data-handle="rotate"></span></div><div id="movingRoi" class="roi moving"><span class="label">TÜR</span><span class="handle nw" data-handle="nw"></span><span class="handle ne" data-handle="ne"></span><span class="handle sw" data-handle="sw"></span><span class="handle se" data-handle="se"></span><span class="handle rotate" data-handle="rotate"></span></div><div id="gFixedRoi" class="roi garageFixed" style="display:none"><span class="label">V-FEST</span><span class="handle nw" data-handle="nw"></span><span class="handle ne" data-handle="ne"></span><span class="handle sw" data-handle="sw"></span><span class="handle se" data-handle="se"></span><span class="handle rotate" data-handle="rotate"></span></div><div id="gMovingRoi" class="roi garageMoving" style="display:none"><span class="label">V-BEWEGT</span><span class="handle nw" data-handle="nw"></span><span class="handle ne" data-handle="ne"></span><span class="handle sw" data-handle="sw"></span><span class="handle se" data-handle="se"></span><span class="handle rotate" data-handle="rotate"></span></div><div id="g2FixedRoi" class="roi garage2Fixed" style="display:none"><span class="label">G2-FEST</span><span class="handle nw" data-handle="nw"></span><span class="handle ne" data-handle="ne"></span><span class="handle sw" data-handle="sw"></span><span class="handle se" data-handle="se"></span><span class="handle rotate" data-handle="rotate"></span></div><div id="g2MovingRoi" class="roi garage2Moving" style="display:none"><span class="label">G2-BEWEGT</span><span class="handle nw" data-handle="nw"></span><span class="handle ne" data-handle="ne"></span><span class="handle sw" data-handle="sw"></span><span class="handle se" data-handle="se"></span><span class="handle rotate" data-handle="rotate"></span></div><div id="personRoi" class="roi personArea" style="display:none"><span class="label">PERSON / POST</span><span class="handle nw" data-handle="nw"></span><span class="handle ne" data-handle="ne"></span><span class="handle sw" data-handle="sw"></span><span class="handle se" data-handle="se"></span></div></div>
@@ -2922,7 +3094,7 @@ DOOR_UI_HTML = r'''<!doctype html>
 
 <div class="panel"><h3>Personen-/Postboten-Bildbereich</h3><div class="statusline">Nur dieser Bildbereich wird bei den drei Motion-JPEGs an YOLO übergeben. Er ersetzt das bisher fest codierte Fenster 25–75 % / 10–90 %.</div><div><strong class="personTxt">Bildbereich:</strong> <code id="personCoords">-</code></div><div class="row"><button id="personShow" class="secondary">Bildbereich einblenden</button><button id="personSave">Bildbereich speichern</button></div></div>
 </main><script>(()=>{
-const $=id=>document.getElementById(id),stage=$('stage'),img=$('cam'),msg=$('msg');const boxes={fixed:$('fixedRoi'),moving:$('movingRoi'),gfixed:$('gFixedRoi'),gmoving:$('gMovingRoi'),g2fixed:$('g2FixedRoi'),g2moving:$('g2MovingRoi'),person:$('personRoi')};
+const $=id=>document.getElementById(id),stage=$('stage'),img=$('cam'),msg=$('msg');$('soundSettingsNav').onclick=()=>{const p=window.location.pathname.replace(/\/$/,'');window.location.href=p+'/sound-settings';};const boxes={fixed:$('fixedRoi'),moving:$('movingRoi'),gfixed:$('gFixedRoi'),gmoving:$('gMovingRoi'),g2fixed:$('g2FixedRoi'),g2moving:$('g2MovingRoi'),person:$('personRoi')};
 let rois={fixed:{cx:.714,cy:.5,w:.028,h:.6,angle:0},moving:{cx:.746,cy:.5,w:.028,h:.6,angle:0},gfixed:{cx:.45,cy:.35,w:.55,h:.035,angle:0},gmoving:{cx:.45,cy:.55,w:.55,h:.035,angle:0},g2fixed:{cx:.45,cy:.35,w:.55,h:.035,angle:0},g2moving:{cx:.45,cy:.55,w:.55,h:.035,angle:0},person:{cx:.5,cy:.5,w:.5,h:.8}},drag=null,viewMode='normal',verticalEnabled=false,vertical2Enabled=false,personVisible=false,uiRemaining=0,uiTimer=null;
 const basePath=window.location.pathname.endsWith('/')?window.location.pathname:(window.location.pathname+'/'),endpoint=n=>basePath+'api/'+n,clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 function renderUiTime(){const sec=Math.max(0,Math.ceil(uiRemaining)),m=Math.floor(sec/60),ss=String(sec%60).padStart(2,'0');$('uitime').textContent=sec>0?`${m}:${ss} min aktiv`:'gesperrt'}function startUiTimer(seconds){uiRemaining=Math.max(0,Number(seconds)||0);renderUiTime();if(uiTimer)clearInterval(uiTimer);uiTimer=setInterval(()=>{uiRemaining=Math.max(0,uiRemaining-1);renderUiTime()},1000)}
@@ -2944,7 +3116,7 @@ img.addEventListener('load',render);img.addEventListener('error',()=>{msg.textCo
 
 
 class DoorCalibrationHandler(BaseHTTPRequestHandler):
-    server_version = "SmartifyPersonDetectionUI/1.6.15"
+    server_version = "SmartifyPersonDetectionUI/1.6.16"
 
     def log_message(self, fmt, *args):
         print(
@@ -3006,6 +3178,20 @@ class DoorCalibrationHandler(BaseHTTPRequestHandler):
             return
 
         path = self._path()
+
+        if path.endswith("/sound-settings/api/sound_options"):
+            self._json(sound_options_payload())
+            return
+
+        if path.endswith("/sound-settings"):
+            html = SOUND_SETTINGS_HTML.encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(html)))
+            self.end_headers()
+            self.wfile.write(html)
+            return
 
         if path.endswith("/api/status") or path == "/api/status":
             if not self._require_active_ui():
@@ -3170,6 +3356,36 @@ class DoorCalibrationHandler(BaseHTTPRequestHandler):
             return
 
         path = self._path()
+
+        if path.endswith("/sound-settings/api/sound_save"):
+            try:
+                update_sound_settings(self._body_json())
+                self._json({"ok": True, "options": sound_options_payload()})
+            except Exception as e:
+                self._json({"error": str(e)}, 400)
+            return
+
+        if path.endswith("/sound-settings/api/sound_play_test"):
+            try:
+                data = self._body_json()
+                kind = str(data.get("kind", "") or "").strip().lower()
+                if kind not in ("person", "post"):
+                    raise ValueError("kind muss person oder post sein.")
+                print(f"Sound-Test {kind}: automatischer Wiedergabepfad.")
+                ok = bool(play_detection_sound(kind, force=False))
+                self._json({"ok": ok})
+            except Exception as e:
+                self._json({"error": str(e)}, 400)
+            return
+
+        if path.endswith("/sound-settings/api/sound_url_test"):
+            try:
+                data = self._body_json()
+                kind = str(data.get("kind", "") or "").strip().lower()
+                self._json(test_sound_url(kind))
+            except Exception as e:
+                self._json({"error": str(e)}, 400)
+            return
 
         if not self._require_active_ui():
             return
