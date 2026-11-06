@@ -1,3 +1,5 @@
+<p align="center"><img src="https://raw.githubusercontent.com/smartify-your-home/smartify-person-detection/main/images/logo.png" alt="smartify Person Detection" width="420"></p>
+
 # Smartify Person Detection
 
 Lokale Personen- und Post-Erkennung für Home Assistant mit YOLO11/ONNX, RTSP-Ringpuffer,
