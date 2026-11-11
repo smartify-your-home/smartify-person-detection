@@ -123,7 +123,11 @@ Die normale Ingress-Hauptseite bleibt ausschließlich für Kamerabild, Personen-
 
 ## Version
 
-Aktuell: **1.6.18**
+Aktuell: **1.6.19**
+
+### 1.6.19 – Snapshot-Diagnose
+
+Nach dem Kopieren eines Personen- oder Post-Snapshots protokolliert das Add-on Quell- und Zielpfad, Dateigröße, SHA256-Prüfsumme, Zeitstempel und Dateigleichheit. Beim Start werden außerdem die Container-Pfade und Schreibberechtigungen der Bildordner ausgegeben. Die bisherige Speicherung bleibt unverändert; die Diagnose soll abweichende Container-Mounts oder Quellbildprobleme sichtbar machen.
 
 
 ### Manuelle MQTT-Resets
