@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.20
+
+- optionale **Sprachansage** bei Post- und Personenerkennung über ein Home-Assistant-Script
+- neue Optionen `announce_script`, `post_announce_text` (Standard „Die Post ist da“) und `person_announce_text`
+- das Script wird per `script.turn_on` mit der Variable `message` aufgerufen
+- pro Ereignis höchstens eine Ansage, Post hat Vorrang; das Sound-Zeitfenster gilt auch für die Ansage
+- Erkennungston, Sound-Schalter und Erkennung selbst bleiben unverändert
+
 ## 1.6.18
 
 - Reset-Topics auf genau drei Varianten bereinigt

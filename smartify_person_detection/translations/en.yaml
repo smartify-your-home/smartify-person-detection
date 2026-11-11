@@ -203,3 +203,12 @@ configuration:
   sound_time_end:
     name: Sound allowed until
     description: 'End of the allowed time window in HH:MM format. Default: 22:00'
+  announce_script:
+    name: Announcement script
+    description: 'Optional Home Assistant script, e.g. script.ansage. It is called with the variable "message". Empty = no announcement.'
+  post_announce_text:
+    name: Post announcement text
+    description: 'Text announced on a post detection. Empty = no announcement. Default: Die Post ist da'
+  person_announce_text:
+    name: Person announcement text
+    description: 'Text announced when a person (without post match) is detected. Empty = no announcement. Default: empty'

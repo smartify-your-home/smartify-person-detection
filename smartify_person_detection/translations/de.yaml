@@ -203,3 +203,12 @@ configuration:
   sound_time_end:
     name: Sound erlaubt bis
     description: 'Ende des erlaubten Zeitbereichs im Format HH:MM. Standard: 22:00'
+  announce_script:
+    name: Script für Sprachansage
+    description: 'Optionales Home-Assistant-Script, z. B. script.ansage. Es wird mit der Variable "message" aufgerufen. Leer = keine Ansage.'
+  post_announce_text:
+    name: Ansagetext Post
+    description: 'Text, der bei einem Post-Treffer angesagt wird. Leer = keine Ansage. Standard: Die Post ist da'
+  person_announce_text:
+    name: Ansagetext Person
+    description: 'Text, der bei einer erkannten Person (ohne Post-Treffer) angesagt wird. Leer = keine Ansage. Standard: leer'

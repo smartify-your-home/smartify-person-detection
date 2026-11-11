@@ -1,5 +1,5 @@
 name: Smartify Person Detection
-version: 1.6.19
+version: 1.6.20
 slug: smartify_person_detection
 description: Lokale Personen- und Post-Erkennung mit YOLO11, RTSP-Ringpuffer, MQTT Discovery sowie optionaler Tür-/Garagentor-Kantenerkennung.
 arch:
@@ -52,6 +52,10 @@ options:
   sound_media_content_type: audio/mpeg
   sound_absolute_url: false
   sound_base_url: ''
+
+  announce_script: ''
+  post_announce_text: Die Post ist da
+  person_announce_text: ''
 
   rtsp_enabled: false
   rtsp_url: ''
@@ -130,6 +134,10 @@ schema:
   sound_media_content_type: str
   sound_absolute_url: bool
   sound_base_url: str
+
+  announce_script: str?
+  post_announce_text: str?
+  person_announce_text: str?
 
   rtsp_enabled: bool
   rtsp_url: str
