@@ -139,7 +139,7 @@ Die normale Ingress-Hauptseite bleibt ausschließlich für Kamerabild, Personen-
 
 ## Version
 
-Aktuell: **1.6.20**
+Aktuell: **1.6.22**
 
 
 ### Manuelle MQTT-Resets
