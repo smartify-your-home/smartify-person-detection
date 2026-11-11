@@ -151,3 +151,20 @@ Die App unterstützt drei Reset-Arten:
 - `smartify_person_detection/reset` – Person und Post gemeinsam auf OFF
 
 Wenn `person_auto_reset` bzw. `post_auto_reset` deaktiviert sind, bleiben erkannte Sensoren auf ON, bis ein manueller Reset erfolgt oder – falls `reset_binaries_at_midnight` aktiv ist – beim ersten Hauptschleifendurchlauf nach dem Datumswechsel auf OFF gesetzt wird.
+
+
+## Datei- und URL-Pfade (Stand 1.6.22)
+
+Die Home-Assistant-App verwendet im Container den schreibbaren Mount `/homeassistant` für die HA-Konfiguration; in Home Assistant entspricht dies `/config`. Der URL-Pfad für Dateien unter `/homeassistant/www` lautet `/local`.
+
+- **`image_dir`:** RTSP-Ringpuffer/Motion-Eingabebilder, z. B. `/homeassistant/www/pictures_person_detection`.
+- **`snapshot_dir`:** Neueste Trefferbilder `person_latest.jpg` und `post_latest.jpg`, z. B. `/homeassistant/www/smartify_person_detection`.
+- **`person_sound` / `post_sound`:** HA-Medien-IDs oder `/local/...`-Sound-URLs, **keine Linux-Snapshot-Pfade**.
+- **`sound_base_url`:** Optionale HTTP(S)-Basisadresse für Soundwiedergabe, kein Speicherpfad.
+- **`rtsp_url`:** Adresse des RTSP-Streams, kein Dateiverzeichnis.
+- **`/data`:** Separater persistenter Speicher für Kalibrierung, Soundkonfiguration, ROI, Status und Entity-IDs; beim Neuinstallieren Daten sichern.
+- **Slideshow:** `run.sh` erzeugt `/homeassistant/www/slideshow_persondetection.html` und die dazugehörige Konfigurations-JSON erst nach erfolgreicher Mount-Prüfung.
+
+Die beiden frei konfigurierbaren **Linux-Verzeichnisse** sind somit `image_dir` und `snapshot_dir`. Ab 1.6.22 werden äußere Leerzeichen entfernt; leere oder relative Angaben werden abgewiesen. Bei einem ungültigen Mount bricht die Anwendung kontrolliert ab, statt in ein flüchtiges Verzeichnis zu schreiben.
+
+**Release-Dokumentation:** Der Root-Changelog `CHANGELOG.md`, der für die App-Anzeige gespiegelte `smartify_person_detection/CHANGELOG.md` und `RELEASE_NOTES.md` halten Änderungen und Upgrade-Hinweise fest. Verbindliche Agent-Regeln: `AGENTS.md`.
