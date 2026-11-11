@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.23 – 2026-11-11 – Dokumentation und Release-Pflege
+
+- **Dokumentation vereinheitlicht:** Root-README, mitgelieferte App-README, App-Dokumentation und die verbindliche `AGENTS.md` auf Stand 1.6.23 gebracht.
+- **Release Notes gepflegt:** eigene benutzerorientierte Hinweise zu Snapshot-Speicherung, Verzeichnis-Konfiguration, Mountschutz, Updateablauf und bisherigen Diagnosen.
+- **Changelog synchronisiert:** Root- und App-Changelog enthalten identische, chronologisch sortierte Einträge bis 1.6.23.
+- **Bestätigter Praxisbefund:** Im Add-on-Protokoll vom 11.11.2026 (21:02:53) verwenden Bildquelle und Snapshot-Ziel beide Device 2056 und sind beschreibbar. Zuvor schrieb der Container auf andere Devices (72/164). Dies belegt eine korrigierte Mount-Sicht, ist jedoch noch kein unabhängiger Beweis für einen anschließend aktualisierten Snapshot nach neuer Erkennung.
+- **Keine Änderung der Personen-/Post-Erkennung, RTSP-Auswertung oder Snapshot-Kopierlogik** durch diese Dokumentationsversion.
+- **Upgrade:** Über den Home-Assistant-App-Store auf die neue App-Version aktualisieren. Vor Deinstallation Kalibrierungs- und Einstellungsdaten in `/data` sichern. Ein GitHub-Tag/Release muss separat tatsächlich erstellt und geprüft werden.
+
 ## 1.6.22 – 2026-11-11
 
 - **Pfadbereinigung:** Konfigurierbare Verzeichnisse `image_dir` und `snapshot_dir` entfernen führende/nachgestellte Leerzeichen; relative und leere Pfade werden abgewiesen.
