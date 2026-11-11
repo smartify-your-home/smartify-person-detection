@@ -52,7 +52,23 @@ def g(key, default):
     return O.get(key, default)
 
 
-IMG = Path(g("image_dir", "/homeassistant/www/cam_pt2_motion"))
+def _configured_directory(option, default):
+    """Normalize user-entered HA paths; reject relative paths before any mkdir."""
+    raw = str(g(option, default))
+    clean = raw.strip()
+    if not clean:
+        raise ValueError(f"{option} darf nicht leer sein.")
+    directory = Path(clean)
+    if not directory.is_absolute():
+        raise ValueError(
+            f"{option} muss ein absoluter Pfad sein (mit / beginnen): {raw!r}"
+        )
+    if clean != raw:
+        print(f"Pfad korrigiert: {option}={raw!r} -> {clean!r}")
+    return directory
+
+
+IMG = _configured_directory("image_dir", "/homeassistant/www/cam_pt2_motion")
 
 HOST = g("mqtt_host", "core-mosquitto")
 PORT = int(g("mqtt_port", 1883))
@@ -149,7 +165,7 @@ VERTICAL2_EDGE_REFERENCE = Path("/data/vertical2_edge_reference_v1.json")
 VERTICAL2_CONFIG = Path("/data/vertical2_config.json")
 ENTITY_IDENTITY_STATE = Path("/data/entity_identity.json")
 PERSON_ROI_CONFIG = Path("/data/person_roi.json")
-SNAPSHOT_DIR = Path(g("snapshot_dir", "/homeassistant/www/smartify_person_detection"))
+SNAPSHOT_DIR = _configured_directory("snapshot_dir", "/homeassistant/www/smartify_person_detection")
 SNAPSHOT_FILENAME = "post_latest.jpg"
 SNAPSHOT_PATH = SNAPSHOT_DIR / SNAPSHOT_FILENAME
 PERSON_SNAPSHOT_FILENAME = "person_latest.jpg"
