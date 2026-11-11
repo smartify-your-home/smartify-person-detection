@@ -139,7 +139,7 @@ Die normale Ingress-Hauptseite bleibt ausschließlich für Kamerabild, Personen-
 
 ## Version
 
-Aktuell: **1.6.22**
+Aktuell: **1.6.23**
 
 
 ### Manuelle MQTT-Resets
@@ -153,7 +153,7 @@ Die App unterstützt drei Reset-Arten:
 Wenn `person_auto_reset` bzw. `post_auto_reset` deaktiviert sind, bleiben erkannte Sensoren auf ON, bis ein manueller Reset erfolgt oder – falls `reset_binaries_at_midnight` aktiv ist – beim ersten Hauptschleifendurchlauf nach dem Datumswechsel auf OFF gesetzt wird.
 
 
-## Datei- und URL-Pfade (Stand 1.6.22)
+## Datei- und URL-Pfade (Stand 1.6.23)
 
 Die Home-Assistant-App verwendet im Container den schreibbaren Mount `/homeassistant` für die HA-Konfiguration; in Home Assistant entspricht dies `/config`. Der URL-Pfad für Dateien unter `/homeassistant/www` lautet `/local`.
 
@@ -168,3 +168,10 @@ Die Home-Assistant-App verwendet im Container den schreibbaren Mount `/homeassis
 Die beiden frei konfigurierbaren **Linux-Verzeichnisse** sind somit `image_dir` und `snapshot_dir`. Ab 1.6.22 werden äußere Leerzeichen entfernt; leere oder relative Angaben werden abgewiesen. Bei einem ungültigen Mount bricht die Anwendung kontrolliert ab, statt in ein flüchtiges Verzeichnis zu schreiben.
 
 **Release-Dokumentation:** Der Root-Changelog `CHANGELOG.md`, der für die App-Anzeige gespiegelte `smartify_person_detection/CHANGELOG.md` und `RELEASE_NOTES.md` halten Änderungen und Upgrade-Hinweise fest. Verbindliche Agent-Regeln: `AGENTS.md`.
+
+## Version 1.6.23 – Dokumentation und Release Notes
+
+Version **1.6.23** synchronisiert die Dokumentation der Supervisor-App mit dem vorhandenen Code. **Keine Änderung** an YOLO, RTSP, MQTT, Sound und Snapshot-Schreiblogik. Aktuelle Änderungen, Upgrade-Hinweise und Einschränkungen stehen in [RELEASE_NOTES.md](https://github.com/smartify-your-home/smartify-person-detection/blob/main/RELEASE_NOTES.md) und in den identischen Root-/App-Changelogs. Die Entwicklungs- und Release-Vorgaben sind in [AGENTS.md](https://github.com/smartify-your-home/smartify-person-detection/blob/main/AGENTS.md) dokumentiert.
+
+**Praxisprüfung:** Die Mount-Diagnose vom 11.11.2026 zeigt `device=2056` und `writable=True` für Bildquelle und Snapshot-Ziel. Das bestätigt die korrekte gemeinsame Dateisystem-Sicht im laufenden Add-on. Ein neues Trefferbild ist damit noch nicht automatisch nachgewiesen.
+
