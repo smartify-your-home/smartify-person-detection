@@ -152,6 +152,41 @@ try:
     SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
 except Exception as exc:
     print(f"Warnung: Snapshot-Ordner konnte nicht angelegt werden: {exc}")
+def _snapshot_diagnostics(label, source, target):
+    """Nach erfolgreichem Kopieren Quelle/Ziel und Container-Mount protokollieren."""
+    try:
+        src = Path(source)
+        dst = Path(target)
+        src_stat, dst_stat = src.stat(), dst.stat()
+        src_sha = hashlib.sha256(src.read_bytes()).hexdigest()
+        dst_sha = hashlib.sha256(dst.read_bytes()).hexdigest()
+        print(
+            f"Snapshot-Diagnose {label}: "
+            f"Quelle={src.resolve()} ({src_stat.st_size} B, "
+            f"mtime={datetime.fromtimestamp(src_stat.st_mtime).astimezone().isoformat()}, sha256={src_sha}); "
+            f"Ziel={dst.resolve()} ({dst_stat.st_size} B, "
+            f"mtime={datetime.fromtimestamp(dst_stat.st_mtime).astimezone().isoformat()}, "
+            f"ctime={datetime.fromtimestamp(dst_stat.st_ctime).astimezone().isoformat()}, sha256={dst_sha}); "
+            f"identisch={src_sha == dst_sha}"
+        )
+    except Exception as exc:
+        print(f"Snapshot-Diagnose {label} fehlgeschlagen: {type(exc).__name__}: {exc}")
+
+
+def _snapshot_mount_diagnostics():
+    """Sicht des Add-on-Containers auf die beiden Ordner dokumentieren."""
+    for label, directory in (("Bildquelle", IMG), ("Snapshot-Ziel", SNAPSHOT_DIR)):
+        try:
+            st = directory.stat()
+            print(
+                f"Snapshot-Mount {label}: pfad={directory}, resolved={directory.resolve()}, "
+                f"device={st.st_dev}, inode={st.st_ino}, "
+                f"writable={os.access(directory, os.W_OK)}"
+            )
+        except Exception as exc:
+            print(f"Snapshot-Mount {label}: FEHLER {type(exc).__name__}: {exc}")
+
+
 SUPERVISOR_TOKEN = os.environ.get("SUPERVISOR_TOKEN", "")
 
 
@@ -3743,6 +3778,7 @@ def hit(name, ratio):
     try:
         shutil.copy2(str(src_path), str(SNAPSHOT_PATH))
         print(f"Treffer-Bild gespeichert: {SNAPSHOT_PATH}")
+        _snapshot_diagnostics("Post", src_path, SNAPSHOT_PATH)
     except Exception as exc:
         print(f"Konnte Treffer-Bild nicht kopieren: {exc}")
 
@@ -3821,6 +3857,7 @@ def person_hit(name):
     try:
         shutil.copy2(str(src_path), str(PERSON_SNAPSHOT_PATH))
         print(f"Person-Bild gespeichert: {PERSON_SNAPSHOT_PATH}")
+        _snapshot_diagnostics("Person", src_path, PERSON_SNAPSHOT_PATH)
     except Exception as exc:
         print(f"Konnte Person-Bild nicht kopieren: {exc}")
 
@@ -4226,6 +4263,7 @@ print(
 print(
     f"Treffer-Snapshot: {SNAPSHOT_PATH}"
 )
+_snapshot_mount_diagnostics()
 
 print(
     f"Person-Sensor ON-Zeit: "
