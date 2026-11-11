@@ -141,7 +141,7 @@ Die normale Ingress-Hauptseite bleibt ausschließlich für Kamerabild, Personen-
 
 ## Version
 
-Aktuell: **1.6.20**
+Aktuell: **1.6.21**
 
 ### 1.6.19 – Snapshot-Diagnose
 
@@ -161,3 +161,7 @@ Wenn `person_auto_reset` bzw. `post_auto_reset` deaktiviert sind, bleiben erkann
 ### 1.6.20 – Snapshot-Speicherung
 
 Person- und Post-Snapshots werden atomar geschrieben und anschließend auf identischen Inhalt geprüft. Der Dateizeitstempel entspricht der tatsächlichen Speicherung; MQTT-Snapshot-URLs folgen dem konfigurierten `snapshot_dir` und enthalten einen Cache-Busting-Parameter. Fehler werden ausdrücklich protokolliert.
+
+### 1.6.21 – Supervisor-Mount-Schutz
+
+Die App prüft vor jeder Dateianlage, ob `/homeassistant` vom Supervisor tatsächlich als Volume eingebunden und beschreibbar ist. Ist der Mount nicht vorhanden, wird die App mit eindeutiger Fehlermeldung beendet, statt Bilder irrtümlich im flüchtigen Container-Dateisystem zu speichern. Bei gültigem Mount erscheint die zugehörige `/proc/self/mountinfo`-Zeile im Protokoll.
