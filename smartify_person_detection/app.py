@@ -4,6 +4,7 @@ import re
 import os
 import sys
 import shutil
+import tempfile
 import time
 import threading
 
@@ -157,6 +158,57 @@ try:
     SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
 except Exception as exc:
     print(f"Warnung: Snapshot-Ordner konnte nicht angelegt werden: {exc}")
+def _save_detection_snapshot(label, name, destination):
+    """Write recognized image atomically and verify the result."""
+    source = IMG / name
+    temp_path = None
+    try:
+        data = source.read_bytes()
+        if not data or not (data.startswith(bytes.fromhex("ffd8")) and data.endswith(bytes.fromhex("ffd9"))):
+            raise ValueError(f"Ungueltiges oder unvollstaendiges JPEG: {source}")
+        SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(
+            mode="wb", prefix=".smartify_snapshot_", suffix=".tmp",
+            dir=str(SNAPSHOT_DIR), delete=False
+        ) as output:
+            temp_path = Path(output.name)
+            output.write(data)
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(str(temp_path), str(destination))
+        temp_path = None
+        os.utime(destination, None)
+        written = destination.read_bytes()
+        if written != data:
+            raise IOError(f"Snapshot-Verifikation fehlgeschlagen: {destination}")
+        st = destination.stat()
+        print(
+            f"{label}-Bild gespeichert und verifiziert: {destination} "
+            f"({st.st_size} Bytes, mtime={datetime.fromtimestamp(st.st_mtime).astimezone().isoformat()}, "
+            f"sha256={hashlib.sha256(written).hexdigest()}, device={st.st_dev}, inode={st.st_ino})"
+        )
+        return True
+    except Exception as exc:
+        print(f"SNAPSHOT-FEHLER {label}: {type(exc).__name__}: {exc}; Quelle={source}; Ziel={destination}")
+        return False
+    finally:
+        if temp_path is not None:
+            try:
+                temp_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+
+def _snapshot_local_url(filename):
+    """Derive an HA /local URL from the configured snapshot directory."""
+    try:
+        relative = (SNAPSHOT_DIR / filename).resolve().relative_to(Path("/homeassistant/www").resolve())
+        return "/local/" + quote(relative.as_posix(), safe="/") + "?v=" + str(int(time.time()))
+    except ValueError:
+        print(f"SNAPSHOT-WARNUNG: snapshot_dir={SNAPSHOT_DIR} liegt nicht unter /homeassistant/www.")
+        return ""
+
+
 def _snapshot_diagnostics(label, source, target):
     """Nach erfolgreichem Kopieren Quelle/Ziel und Container-Mount protokollieren."""
     try:
@@ -1736,7 +1788,7 @@ def publish_counter_attributes():
             {
                 "personen_heute": person_count_today,
                 "letzte_10_detektionen": list(reversed(person_detection_history[-10:])),
-                "snapshot": "/local/smartify_person_detection/person_latest.jpg"
+                "snapshot": _snapshot_local_url(PERSON_SNAPSHOT_FILENAME)
             }
         ),
         retain=True
@@ -1748,7 +1800,7 @@ def publish_counter_attributes():
             {
                 "postboten_heute": post_count_today,
                 "letzte_10_detektionen": list(reversed(post_detection_history[-10:])),
-                "snapshot": "/local/smartify_person_detection/post_latest.jpg"
+                "snapshot": _snapshot_local_url(SNAPSHOT_FILENAME)
             }
         ),
         retain=True
@@ -3829,9 +3881,7 @@ def hit(name, ratio):
     # dem rotierenden Motion-Ordner verschwindet/ueberschrieben wird.
     src_path = IMG / name
     try:
-        shutil.copy2(str(src_path), str(SNAPSHOT_PATH))
-        print(f"Treffer-Bild gespeichert: {SNAPSHOT_PATH}")
-        _snapshot_diagnostics("Post", src_path, SNAPSHOT_PATH)
+        _save_detection_snapshot("Post", name, SNAPSHOT_PATH)
     except Exception as exc:
         print(f"Konnte Treffer-Bild nicht kopieren: {exc}")
 
@@ -3908,9 +3958,7 @@ def person_hit(name):
     # Der Original-Dateiname im MQTT-Sensor bleibt aus Kompatibilitaetsgruenden erhalten.
     src_path = IMG / name
     try:
-        shutil.copy2(str(src_path), str(PERSON_SNAPSHOT_PATH))
-        print(f"Person-Bild gespeichert: {PERSON_SNAPSHOT_PATH}")
-        _snapshot_diagnostics("Person", src_path, PERSON_SNAPSHOT_PATH)
+        _save_detection_snapshot("Person", name, PERSON_SNAPSHOT_PATH)
     except Exception as exc:
         print(f"Konnte Person-Bild nicht kopieren: {exc}")
 
