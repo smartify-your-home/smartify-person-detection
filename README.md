@@ -141,7 +141,7 @@ Die normale Ingress-Hauptseite bleibt ausschließlich für Kamerabild, Personen-
 
 ## Version
 
-Aktuell: **1.6.21**
+Aktuell: **1.6.22**
 
 ### 1.6.19 – Snapshot-Diagnose
 
@@ -165,3 +165,7 @@ Person- und Post-Snapshots werden atomar geschrieben und anschließend auf ident
 ### 1.6.21 – Supervisor-Mount-Schutz
 
 Die App prüft vor jeder Dateianlage, ob `/homeassistant` vom Supervisor tatsächlich als Volume eingebunden und beschreibbar ist. Ist der Mount nicht vorhanden, wird die App mit eindeutiger Fehlermeldung beendet, statt Bilder irrtümlich im flüchtigen Container-Dateisystem zu speichern. Bei gültigem Mount erscheint die zugehörige `/proc/self/mountinfo`-Zeile im Protokoll.
+
+### 1.6.22 – Pfadbereinigung
+
+Führende und nachgestellte Leerzeichen in `image_dir` und `snapshot_dir` werden automatisch entfernt. Leere oder relative Pfade werden mit einer klaren Fehlermeldung abgewiesen, bevor Verzeichnisse angelegt werden. Dies verhindert, dass Snapshots bei einem versehentlich vorangestellten Leerzeichen in einem relativen Container-Ordner landen.
