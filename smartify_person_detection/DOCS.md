@@ -119,6 +119,10 @@ Auto-Reset:
 - `reset_binaries_at_midnight: true` setzt Person und Post beim ersten Hauptschleifendurchlauf nach dem lokalen Datumswechsel auf OFF; gleichzeitig werden die Tageszähler zurückgesetzt.
 
 
+## Änderung 1.6.20
+
+Optionale Sprachansage über ein Home-Assistant-Script: `announce_script` (z. B. `script.ansage`), `post_announce_text` (Standard „Die Post ist da“) und `person_announce_text`. Das Script wird per `script.turn_on` mit der Variable `message` aufgerufen. Pro Ereignis höchstens eine Ansage, Post hat Vorrang; ein aktiviertes Sound-Zeitfenster gilt auch für die Ansage. Leeres Script oder leerer Text = keine Ansage.
+
 ## Änderung 1.6.18
 
 Die Reset-Topics wurden auf genau drei Varianten bereinigt: `person_reset`, `post_reset` und `reset`. Der vorübergehende Legacy-Alias `person/reset` wurde wieder entfernt.

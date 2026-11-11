@@ -104,6 +104,24 @@ Der Sound-Test nutzt denselben `media_player.play_media`-Ablauf wie die automati
 Damit kann der gesamte Sound oder Person/Post getrennt stummgeschaltet werden. Die Schalterzustände
 werden persistent gespeichert und können direkt in Dashboards, Szenen oder Automationen verwendet werden.
 
+## Sprachansage über ein Home-Assistant-Script
+
+Zusätzlich zum Erkennungston kann die App eine **Sprachansage** auslösen. Dazu wird ein
+Home-Assistant-Script aufgerufen, das den Text in der Variable `message` erhält. Wie und wo
+angesagt wird (Sonos, Echo, TTS-Engine, Lautstärke), legt allein dieses Script fest.
+
+Einstellungen auf der Seite **Konfiguration**:
+
+- `announce_script` – Script-Entity, z. B. `script.ansage`. Leer = keine Ansage (Standard).
+- `post_announce_text` – Text bei einem Post-Treffer. Standard: `Die Post ist da`.
+- `person_announce_text` – Text bei einer erkannten Person ohne Post-Treffer. Standard: leer.
+
+Pro Erkennungsereignis wird höchstens **eine** Ansage ausgegeben, Post hat Vorrang vor Person.
+Die Ansage ist unabhängig vom Erkennungston und dessen Schaltern. Ist das Sound-Zeitfenster
+aktiviert, gilt es auch für die Ansage. Die App ruft `script.turn_on` mit
+`variables: {message: "<Text>"}` auf; das Script muss ein Feld bzw. eine Variable `message`
+auswerten.
+
 ## Automatische Resets
 
 Automatische Timer-Resets für Person/Post sowie der Binary-Reset um Mitternacht sind
@@ -121,7 +139,7 @@ Die normale Ingress-Hauptseite bleibt ausschließlich für Kamerabild, Personen-
 
 ## Version
 
-Aktuell: **1.6.18**
+Aktuell: **1.6.20**
 
 
 ### Manuelle MQTT-Resets

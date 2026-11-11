@@ -96,6 +96,11 @@ SOUND_ABSOLUTE_URL = bool(g("sound_absolute_url", False))
 SOUND_TIME_WINDOW_ENABLED = bool(g("sound_time_window_enabled", False))
 SOUND_TIME_START = str(g("sound_time_start", "07:00")).strip() or "07:00"
 SOUND_TIME_END = str(g("sound_time_end", "22:00")).strip() or "22:00"
+# Optionale Sprachansage: ruft ein Home-Assistant-Script mit der Variable
+# "message" auf (z. B. script.ansage). Unabhaengig vom Erkennungston.
+ANNOUNCE_SCRIPT = str(g("announce_script", "") or "").strip()
+POST_ANNOUNCE_TEXT = str(g("post_announce_text", "") or "").strip()
+PERSON_ANNOUNCE_TEXT = str(g("person_announce_text", "") or "").strip()
 SOUND_SETTINGS_FILE = Path("/data/sound_settings.json")
 SOUND_SWITCH_STATE_FILE = Path("/data/sound_switches.json")
 SOUND_FILES_DIR = Path("/homeassistant/www")
@@ -861,6 +866,54 @@ def play_detection_sound(kind, force=False):
     except Exception as exc:
         print(
             f"Sound: Wiedergabe fuer {kind} ueber {media_player} fehlgeschlagen: "
+            f"{type(exc).__name__}: {exc}"
+        )
+        return False
+
+
+def play_detection_announcement(kind):
+    """Sprachansage fuer 'person' oder 'post' ueber ein HA-Script ausgeben.
+
+    Das Script wird mit der Variable ``message`` aufgerufen. Die Ansage ist
+    unabhaengig vom Erkennungston und dessen Schaltern, beachtet aber das
+    Sound-Zeitfenster, falls dieses aktiviert ist.
+    """
+    if kind not in ("person", "post"):
+        return False
+    if not ANNOUNCE_SCRIPT:
+        return False
+
+    text = POST_ANNOUNCE_TEXT if kind == "post" else PERSON_ANNOUNCE_TEXT
+    if not text:
+        return False
+
+    if not re.fullmatch(r"script\.[a-z0-9_]+", ANNOUNCE_SCRIPT):
+        print(f"Ansage: ungueltige Script-Entity: {ANNOUNCE_SCRIPT}")
+        return False
+
+    with sound_settings_lock:
+        settings = dict(sound_settings)
+    if not sound_time_allowed(settings=settings):
+        print(
+            f"Ansage: {kind} nicht ausgegeben – ausserhalb des erlaubten Zeitfensters "
+            f"{settings.get('time_start')}-{settings.get('time_end')}."
+        )
+        return False
+
+    try:
+        _ha_api_request(
+            "/services/script/turn_on",
+            payload={
+                "entity_id": ANNOUNCE_SCRIPT,
+                "variables": {"message": text},
+            },
+            timeout=10,
+        )
+        print(f"Ansage: {kind} ueber {ANNOUNCE_SCRIPT} ausgegeben: {text}")
+        return True
+    except Exception as exc:
+        print(
+            f"Ansage: Aufruf von {ANNOUNCE_SCRIPT} fuer {kind} fehlgeschlagen: "
             f"{type(exc).__name__}: {exc}"
         )
         return False
@@ -4395,8 +4448,10 @@ def process_batch(batch, partial=False):
     # deshalb hat der speziellere Post-Ton Vorrang.
     if yellow_found:
         play_detection_sound("post")
+        play_detection_announcement("post")
     elif person_detected:
         play_detection_sound("person")
+        play_detection_announcement("person")
 
     _mark_processed(batch)
 
