@@ -157,3 +157,7 @@ Die App unterstützt drei Reset-Arten:
 - `smartify_person_detection/reset` – Person und Post gemeinsam auf OFF
 
 Wenn `person_auto_reset` bzw. `post_auto_reset` deaktiviert sind, bleiben erkannte Sensoren auf ON, bis ein manueller Reset erfolgt oder – falls `reset_binaries_at_midnight` aktiv ist – beim ersten Hauptschleifendurchlauf nach dem Datumswechsel auf OFF gesetzt wird.
+
+### 1.6.20 – Snapshot-Speicherung
+
+Person- und Post-Snapshots werden atomar geschrieben und anschließend auf identischen Inhalt geprüft. Der Dateizeitstempel entspricht der tatsächlichen Speicherung; MQTT-Snapshot-URLs folgen dem konfigurierten `snapshot_dir` und enthalten einen Cache-Busting-Parameter. Fehler werden ausdrücklich protokolliert.
