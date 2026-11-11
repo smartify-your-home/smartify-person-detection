@@ -2,6 +2,20 @@
 
 Die folgenden Hinweise beschreiben die Änderungen im Quellcode. Ein Eintrag hier **beweist nicht**, dass ein GitHub-Tag, GitHub-Release oder ein installiertes Supervisor-Image bereits existiert. Diese Zustände sind vor einer Veröffentlichung separat zu prüfen.
 
+## v1.6.23 – Dokumentation und Release-Angaben (2026-11-11)
+
+**Neu:** Alle Nutzer- und Entwicklerdokumente sind auf den Stand 1.6.23 abgestimmt. Root- und App-Changelog enthalten den gleichen Versionsverlauf; für neue Versionen gelten verbindliche Release- und Testregeln aus `AGENTS.md`.
+
+**Nachgewiesen:** Das Laufzeitprotokoll vom 11.11.2026 um 21:02:53 zeigt für `/homeassistant/www/pictures_person_detection` und `/homeassistant/www/smartify_person_detection` jeweils `device=2056`, `writable=True`. Damit ist die Mount-Sicht im laufenden Add-on konsistent mit dem HA-Dateisystem. Die Aktualisierung der JPG-Dateien nach einem neuen Treffer wurde für diese Version nicht unabhängig verifiziert.
+
+**Unverändert:** YOLO-Erkennung, RTSP-Trigger, MQTT, Sound, Kalibrierung und Snapshot-Schreiblogik wurden für 1.6.23 nicht funktional angepasst.
+
+**Aktualisierung:** Home Assistant → Einstellungen → Apps → App Store → Smartify Person Detection aktualisieren. Bei Änderungen der Container-Einbindung kann ein Neuaufbau sinnvoll sein. **Keine Deinstallation ohne Sicherung** der Add-on-Daten und Kalibrierungen unter `/data`.
+
+**Bekannte Einschränkung:** Ein erfolgreiches Schreiben innerhalb des Add-ons belegt allein noch nicht, dass ein anderes Dateisystem dieselbe Datei sieht. Bei Bedarf Snapshot-Mount-Log und tatsächliches Dateidatum nach einem neuen Trigger prüfen.
+
+**Veröffentlichungsstatus:** Versionsangaben und Release Notes im Repository sind nicht gleichbedeutend mit einem bereits erzeugten GitHub-Tag oder GitHub-Release.
+
 ## v1.6.22 – Pfadeingaben gegen versehentliche Leerzeichen absichern
 
 **Behoben:** Führende/nachgestellte Leerzeichen in `image_dir` und `snapshot_dir` werden entfernt. Leere und relative Verzeichnisangaben werden mit klarer Fehlermeldung abgewiesen.
