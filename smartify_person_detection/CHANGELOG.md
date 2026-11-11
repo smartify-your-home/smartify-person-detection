@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.6.22 – 2026-11-11
+
+- **Pfadbereinigung:** Konfigurierbare Verzeichnisse `image_dir` und `snapshot_dir` entfernen führende/nachgestellte Leerzeichen; relative und leere Pfade werden abgewiesen.
+- **Warum wichtig:** Ein führendes Leerzeichen ließ Python einen vermeintlich absoluten Snapshot-Pfad als relativen Pfad im Container interpretieren.
+- **Upgrade-Hinweis:** App-Update/Neubau verwenden; auf korrekte Mount-Prüfung achten. Eine bestehende Datei im falsch verwendeten Containerpfad wird nicht automatisch migriert.
+
+## 1.6.21 – 2026-11-11
+
+- **Supervisor-Mountschutz:** `run.sh` prüft vor der ersten Anlage unter `/homeassistant`, ob der HA-Konfigurationsmount vorhanden und beschreibbar ist. Bei fehlendem Mount eindeutiger Abbruch statt Container-Overlay als stiller Ersatz.
+- **Diagnose:** Mountinformationen werden beim Start protokolliert.
+- **Upgrade-Hinweis:** Wenn die App wegen fehlendem Mount nicht startet, das korrekte Mapping `homeassistant_config` und die tatsächlich installierte Add-on-Instanz prüfen.
+
+## 1.6.20 – Snapshot-Fix (2026-11-11)
+
+- Person- und Post-Snapshots werden atomar ersetzt, zurückgelesen und gegen die Quelle geprüft; der Speichervorgang setzt einen aktuellen mtime.
+- MQTT-Snapshot-URLs folgen dem konfigurierten `snapshot_dir`, anstatt den Standardpfad hart zu codieren.
+- Fehlerprotokollierung über `SNAPSHOT-FEHLER` verbessert.
+- **Historienhinweis:** Ein bereits vorhandener älterer Changelog-Abschnitt mit derselben Versionsnummer 1.6.20 beschreibt optionale Sprachansagen. Diese widersprüchliche historische Zuordnung muss vor einer weiteren Release-Veröffentlichung gegen Git-Tag/Commit-Historie abgeglichen werden; nichts rückwirkend als veröffentlicht behaupten.
+
+## 1.6.19 – 2026-11-11
+
+- Snapshot-Diagnose ergänzt: SHA256, Quell-/Zielpfad, Dateigröße, mtime, ctime, Device/Inode; beim Start Diagnose der Bildverzeichnisse.
+- Bildkopierlogik in dieser Version nicht geändert.
+
 ## 1.6.20
 
 - optionale **Sprachansage** bei Post- und Personenerkennung über ein Home-Assistant-Script
