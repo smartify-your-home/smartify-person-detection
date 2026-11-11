@@ -91,3 +91,9 @@ Eine Änderung gilt erst als fertig, wenn Code, Tests/Testeinschränkungen, Root
 - 1.6.21: Mountschutz vor `mkdir -p`; der Schutz gehört in den Containerstart, nicht bloß in die Snapshotfunktion.
 - 1.6.22: Whitespace an `image_dir`/`snapshot_dir` entfernen und relative/leere Eingaben abweisen.
 - Diese Punkte und bestehende Sound-/Reset-Fixes sind regressionsempfindlich und müssen vor jedem weiteren Release überprüft werden.
+
+## 10. Übergabe v1.6.23 (2026-11-11)
+
+- 1.6.23 synchronisiert Versionsmetadaten, Root-/App-Changelog, Root-/App-README, `DOCS.md` und `RELEASE_NOTES.md`; diese Dokumentationsänderung ist **kein** zusätzlicher Fix an der Personen-/Post-Erkennung.
+- Zuletzt bestätigt: beide App-Verzeichnisse auf `device=2056`, beschreibbar. Nicht als Beleg für einen tatsächlich ersetzten JPG-Snapshot nach dem nächsten Trigger ausgeben.
+- Bei späteren Versionen die Benutzer-Release-Notes **vor** dem Versions-Bump fortführen und separat prüfen, ob GitHub-Tag/Release existieren. Der Supervisor-Updatepfad basiert auf `config.yaml:version`, nicht nur auf dem Docker-Label.
