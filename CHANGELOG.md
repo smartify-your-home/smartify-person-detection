@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.6.24 – 2026-11-12 – Folge-Trigger während der RTSP-Sperrphase
+
+- **Behoben:** Löste zuerst der Fahrzeug-Sensor aus (Postauto fährt vor) und stieg der Zusteller erst danach aus, wurde der Personen-Trigger wegen der Sperrphase (`rtsp_rearm_off_seconds`) ignoriert. Die Person war in keinem ausgewerteten Frame, „Post“ wurde nicht erkannt (Praxisfall 12.11.2026, 08:07).
+- **Neu:** Ein **anderer** Trigger-Sensor, der während der Sperrphase erstmals ON ist, löst genau **ein Folge-Ereignis** aus. Das Folge-Fenster schließt an das vorherige Fenster an; kein Frame wird doppelt ausgewertet.
+- **Unverändert/geschützt:** Derselbe Sensor löst pro Sperrphase weiterhin nur einmal aus (Flatterschutz). Wurde in der Phase bereits eine Person gemeldet, wird sie im Folge-Ereignis nicht erneut gezählt oder gemeldet; ein Post-Treffer wird immer gemeldet (Post vor Person). Nach einem Post-Treffer gibt es kein Folge-Ereignis mehr. Wieder-Scharfschaltung wie bisher.
+- **Behoben:** Die Sprachansage (`announce_script`) wurde im RTSP-Modus nie ausgelöst, nur im Ordner-Modus. Sie folgt jetzt in beiden Modi derselben Regel (eine Ansage pro Ereignis, Post vor Person).
+- **Tests:** Neuer Regressionstest `tests/test_rtsp_followup_trigger.py` (Simulation ohne Kamera/MQTT/YOLO).
+- **Migration:** keine; keine neuen Optionen. Wer bereits eine eigene Automation für die Ansage „Post ist da“ nutzt und `announce_script` gesetzt hat, bekommt im RTSP-Modus nun zusätzlich die App-Ansage.
+- **Bekannte Einschränkung:** Bei mehreren Trigger-Sensoren können pro Sperrphase bis zu „Anzahl Sensoren“ Fenster ausgewertet werden. Nicht in einer laufenden HA-Instanz Ende-zu-Ende geprüft.
+
 ## 1.6.23 – 2026-11-11 – Dokumentation und Release-Pflege
 
 - **Dokumentation vereinheitlicht:** Root-README, mitgelieferte App-README, App-Dokumentation und die verbindliche `AGENTS.md` auf Stand 1.6.23 gebracht.

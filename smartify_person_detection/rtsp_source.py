@@ -362,6 +362,48 @@ def _entity_on(entity):
 
 
 
+def _new_phase():
+    """Zustand einer Sperrphase (vom ersten Trigger bis zur Wieder-Scharfschaltung)."""
+    return {
+        # Trigger, die in dieser Phase bereits ein Ereignis ausgeloest haben
+        # oder beim Ausloesen schon ON waren (vom selben Fenster abgedeckt).
+        "fired": set(),
+        "person": False,
+        "post": False,
+        # Ende des zuletzt ausgewerteten Fensters (monotonic), damit ein
+        # Folge-Ereignis keine Frames doppelt auswertet.
+        "window_end": None,
+    }
+
+
+def _merge_result(phase, result):
+    if not result:
+        return
+    phase["person"] = phase["person"] or bool(result.get("person"))
+    phase["post"] = phase["post"] or bool(result.get("post"))
+    if result.get("window_end") is not None:
+        phase["window_end"] = result["window_end"]
+
+
+def _followup_candidate(phase, current):
+    """Trigger bestimmen, der waehrend der Sperre ein Folge-Ereignis ausloest.
+
+    Hintergrund: Faehrt z. B. das Postauto vor, loest der Fahrzeug-Sensor das
+    Ereignis aus und sperrt die Erkennung. Steigt der Zusteller erst danach
+    aus, wurde der Personen-Sensor bisher ignoriert. Deshalb darf jeder
+    ANDERE Trigger, der in der Sperrphase erstmals ON ist, genau ein
+    Folge-Ereignis ausloesen. Derselbe Sensor loest in einer Phase nie
+    zweimal aus (Flatterschutz bleibt erhalten). Nach einem Post-Treffer
+    gibt es kein Folge-Ereignis mehr.
+    """
+    if phase["post"]:
+        return None
+    for e in TRIGGERS:
+        if current.get(e) and e not in phase["fired"]:
+            return e
+    return None
+
+
 def _trigger_loop():
 
     global _last_trigger_poll_ok
@@ -372,8 +414,11 @@ def _trigger_loop():
     # Nach einem ausgeloesten Ereignis wird die Erkennung gesperrt.
     # Erst wenn ALLE konfigurierten Trigger-Sensoren fuer REARM_OFF
     # Sekunden durchgehend OFF waren, wird wieder scharf geschaltet.
+    # Ausnahme: ein anderer Trigger, der in der Sperrphase erstmals ON
+    # wird, loest genau ein Folge-Ereignis aus (siehe _followup_candidate).
     armed = True
     all_off_since = None
+    phase = _new_phase()
 
     while True:
 
@@ -414,13 +459,17 @@ def _trigger_loop():
             # Person nicht mehrere Ereignisse fuer dieselbe Anwesenheit erzeugt.
             armed = False
             all_off_since = None
+            phase = _new_phase()
+            # Alle jetzt aktiven Trigger sind durch dieses Fenster abgedeckt.
+            phase["fired"] = {e for e in TRIGGERS if current.get(e)}
+            phase["fired"].add(fired)
             print(
                 f"RTSP-Trigger gesperrt: neuer Event erst nachdem alle Trigger "
                 f"{REARM_OFF:g}s durchgehend OFF waren."
             )
 
             try:
-                _handle_event(fired, time.monotonic())
+                _merge_result(phase, _handle_event(fired, time.monotonic()))
 
             except Exception as ex:
                 print(f"RTSP: Fehler bei Ereignisauswertung: {ex}")
@@ -432,6 +481,36 @@ def _trigger_loop():
             continue
 
         if not armed:
+            follow = _followup_candidate(phase, current)
+
+            if follow:
+                # Zustandsbasiert statt flankenbasiert: die Flanke kann
+                # waehrend der blockierenden Auswertung passiert sein.
+                phase["fired"].update(e for e in TRIGGERS if current.get(e))
+                all_off_since = None
+                print(
+                    f"RTSP-Folge-Trigger waehrend Sperre: {follow} ist ON - "
+                    f"werte ein Folge-Ereignis aus."
+                )
+
+                try:
+                    _merge_result(
+                        phase,
+                        _handle_event(
+                            follow,
+                            time.monotonic(),
+                            window_start=phase["window_end"],
+                            person_already=phase["person"],
+                        ),
+                    )
+
+                except Exception as ex:
+                    print(f"RTSP: Fehler bei Folge-Ereignisauswertung: {ex}")
+
+                prev = {e: None for e in TRIGGERS}
+                time.sleep(POLL)
+                continue
+
             # Nur bei erfolgreicher Abfrage ALLER Trigger kann rearmed werden.
             all_known = poll_ok and len(current) == len(TRIGGERS)
             all_off = all_known and all(not current[e] for e in TRIGGERS)
@@ -443,6 +522,7 @@ def _trigger_loop():
                 elif now - all_off_since >= REARM_OFF:
                     armed = True
                     all_off_since = None
+                    phase = _new_phase()
                     # Alle Sensoren sind gerade OFF; so wird die naechste
                     # echte OFF->ON-Flanke sicher erkannt.
                     prev = {e: False for e in TRIGGERS}
@@ -656,33 +736,49 @@ def _write_frame(data, frame_wall_time):
 
 
 
-def _handle_event(entity, t0):
+def _handle_event(entity, t0, window_start=None, person_already=False):
+    """Ereignisfenster um t0 auswerten.
+
+    window_start (monotonic): bei einem Folge-Ereignis das Ende des zuvor
+    ausgewerteten Fensters; Frames davor werden nicht erneut ausgewertet.
+    person_already: in dieser Sperrphase wurde bereits eine Person gemeldet;
+    sie wird dann nicht noch einmal gezaehlt/gemeldet (keine Doppelerkennung).
+    Ein Post-Treffer wird immer gemeldet (Post hat Vorrang).
+
+    Rueckgabe: {"person": bool, "post": bool, "window_end": float|None}
+    """
+
+    result = {"person": False, "post": False, "window_end": None}
 
     print(f"RTSP-Trigger: {entity} -> on")
 
     _app["pause_door_after_motion"]()
 
-
-
     if not stream_ok():
 
         print("RTSP: kein aktueller Stream-Frame - Ereignis kann nicht ausgewertet werden.")
 
-        return
-
-
+        return result
 
     # Nachlaufzeit abwarten, Frames kommen weiter in den Puffer
 
     time.sleep(max(0.0, t0 + POST - time.monotonic()) + 0.3)
 
+    lo = t0 - PRE
+    if window_start is not None and window_start > lo:
+        lo = window_start
+        strict = True
+    else:
+        strict = False
 
+    result["window_end"] = t0 + POST
 
     with _buffer_lock:
 
-        frames = [(t, wall, d) for t, wall, d in _buffer if t0 - PRE <= t <= t0 + POST]
-
-
+        frames = [
+            (t, wall, d) for t, wall, d in _buffer
+            if (t > lo if strict else t >= lo) and t <= t0 + POST
+        ]
 
     selected = []
 
@@ -696,15 +792,11 @@ def _handle_event(entity, t0):
 
             next_t = t + 1.0 / ANALYZE_FPS
 
-
-
     if not selected:
 
         print("RTSP: keine Frames im Ereignisfenster gefunden.")
 
-        return
-
-
+        return result
 
     try:
         img_dir = _app["IMG"]
@@ -729,8 +821,6 @@ def _handle_event(entity, t0):
 
     )
 
-
-
     analyze = _app["analyze"]
 
     person_detected = False
@@ -739,15 +829,11 @@ def _handle_event(entity, t0):
 
     yellow_found = None
 
-
-
     for p in paths:
 
         yellow_ok, person_ok, q = analyze(p)
 
         print(f"{p.name}: Person={person_ok}, Gelb={q:.3f}, Postbote={yellow_ok}")
-
-
 
         if person_ok and person_image_name is None:
 
@@ -755,25 +841,31 @@ def _handle_event(entity, t0):
 
             person_image_name = p.name
 
-
-
         if yellow_ok:
 
             yellow_found = (p.name, q)
 
             break  # Postbote gefunden, restliche Frames nicht noetig
 
+    result["person"] = person_detected
+    result["post"] = bool(yellow_found)
 
+    # Person in dieser Sperrphase schon gemeldet -> nicht doppelt zaehlen.
+    report_person = person_detected and not person_already
 
-    if person_detected:
+    if person_detected and person_already:
+        print(
+            f"RTSP-Folge-Ereignis: Person ({person_image_name}) wurde in dieser "
+            f"Sperrphase bereits gemeldet - kein zweiter Person-Treffer."
+        )
+
+    if report_person:
 
         print("PERSON ERKANNT:", person_image_name)
 
         _app["count_person"]()
 
         _app["person_hit"](person_image_name)
-
-
 
     if yellow_found:
 
@@ -783,17 +875,24 @@ def _handle_event(entity, t0):
 
         _app["hit"](*yellow_found)
 
-
     # Pro RTSP-Ereignis genau ein Ton; Post hat Vorrang vor Person.
+    # Die Sprachansage (announce_script) folgt derselben Regel wie im
+    # Ordner-Modus; bisher wurde sie im RTSP-Modus nicht ausgeloest.
+    announce = _app.get("play_detection_announcement")
     if yellow_found:
         _app["play_detection_sound"]("post")
-    elif person_detected:
+        if announce:
+            announce("post")
+    elif report_person:
         _app["play_detection_sound"]("person")
-
+        if announce:
+            announce("person")
 
     if not person_detected and not yellow_found:
 
         print("RTSP: keine Person im Ereignisfenster erkannt.")
+
+    return result
 
 
 

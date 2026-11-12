@@ -139,7 +139,7 @@ Die normale Ingress-Hauptseite bleibt ausschließlich für Kamerabild, Personen-
 
 ## Version
 
-Aktuell: **1.6.23**
+Aktuell: **1.6.24**
 
 
 ### Manuelle MQTT-Resets
@@ -168,6 +168,10 @@ Die Home-Assistant-App verwendet im Container den schreibbaren Mount `/homeassis
 Die beiden frei konfigurierbaren **Linux-Verzeichnisse** sind somit `image_dir` und `snapshot_dir`. Ab 1.6.22 werden äußere Leerzeichen entfernt; leere oder relative Angaben werden abgewiesen. Bei einem ungültigen Mount bricht die Anwendung kontrolliert ab, statt in ein flüchtiges Verzeichnis zu schreiben.
 
 **Release-Dokumentation:** Der Root-Changelog `CHANGELOG.md`, der für die App-Anzeige gespiegelte `smartify_person_detection/CHANGELOG.md` und `RELEASE_NOTES.md` halten Änderungen und Upgrade-Hinweise fest. Verbindliche Agent-Regeln: `AGENTS.md`.
+
+## Version 1.6.24 – Folge-Trigger im RTSP-Modus
+
+Löst ein Trigger-Sensor ein RTSP-Ereignis aus, ist die Erkennung gesperrt, bis alle Trigger `rtsp_rearm_off_seconds` lang OFF waren. Ab **1.6.24** darf ein **anderer** Trigger-Sensor, der in dieser Sperrphase erstmals ON ist, genau ein Folge-Ereignis auslösen (z. B. Fahrzeug-Sensor zuerst, Personen-Sensor einige Sekunden später). Derselbe Sensor löst pro Sperrphase weiterhin nur einmal aus; eine bereits gemeldete Person wird nicht doppelt gezählt, ein Post-Treffer hat Vorrang. Die Sprachansage (`announce_script`) wird nun auch im RTSP-Modus ausgelöst. Details: `CHANGELOG.md` und `RELEASE_NOTES.md`.
 
 ## Version 1.6.23 – Dokumentation und Release Notes
 

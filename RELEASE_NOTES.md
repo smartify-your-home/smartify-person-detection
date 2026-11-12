@@ -2,6 +2,20 @@
 
 Die folgenden Hinweise beschreiben die Änderungen im Quellcode. Ein Eintrag hier **beweist nicht**, dass ein GitHub-Tag, GitHub-Release oder ein installiertes Supervisor-Image bereits existiert. Diese Zustände sind vor einer Veröffentlichung separat zu prüfen.
 
+## v1.6.24 – Post wird auch erkannt, wenn zuerst das Fahrzeug auslöst (2026-11-12)
+
+**Behoben:** Fährt das Postauto vor, löst meist zuerst der Fahrzeug-Sensor aus. Bisher war die Erkennung danach gesperrt, bis alle Trigger 10 s OFF waren – der Zusteller, der erst einige Sekunden später ausstieg, wurde nie ausgewertet. Jetzt löst ein anderer Trigger-Sensor, der während der Sperre erstmals ON ist, ein Folge-Ereignis aus.
+
+**Behoben:** Die Sprachansage über `announce_script` funktionierte nur im Ordner-Modus. Sie wird nun auch im RTSP-Modus ausgelöst.
+
+**Unverändert:** Flatterschutz je Sensor, Wieder-Scharfschaltung, Post vor Person, keine doppelte Personenmeldung innerhalb einer Sperrphase, YOLO-/Gelb-Schwellen, MQTT, Snapshots, Kalibrierung.
+
+**Aktualisierung:** Home Assistant → Einstellungen → Apps → App Store → Smartify Person Detection aktualisieren (Image wird neu gebaut). Keine Konfigurationsänderung nötig. Wer `announce_script` gesetzt hat **und** eine eigene Ansage-Automation betreibt, sollte eine von beiden deaktivieren, sonst wird doppelt angesagt.
+
+**Prüfstatus:** Regressionstest `tests/test_rtsp_followup_trigger.py` bestanden (Ablauf vom 12.11.2026 nachgestellt, schlägt mit 1.6.23 fehl). Die Erkennungsfunktion `analyze()` wurde zusätzlich mit einem verkleinerten Bildschirmfoto des Ereignisses (motion_049) geprüft: Person und Post erkannt. **Nicht** in einer laufenden HA-Instanz Ende-zu-Ende geprüft.
+
+**Veröffentlichungsstatus:** Versionsangaben im Repository sind nicht gleichbedeutend mit einem GitHub-Tag oder GitHub-Release; beides existiert für dieses Repository bisher nicht.
+
 ## v1.6.23 – Dokumentation und Release-Angaben (2026-11-11)
 
 **Neu:** Alle Nutzer- und Entwicklerdokumente sind auf den Stand 1.6.23 abgestimmt. Root- und App-Changelog enthalten den gleichen Versionsverlauf; für neue Versionen gelten verbindliche Release- und Testregeln aus `AGENTS.md`.
