@@ -847,6 +847,14 @@ def _handle_event(entity, t0, window_start=None, person_already=False):
 
             break  # Postbote gefunden, restliche Frames nicht noetig
 
+    # Optionale Post-Filter (Zustelltag/-zeit, Fahrzeug). Greift ein Filter,
+    # wird der Gelb-Treffer als normale Person gemeldet.
+    post_filter = _app.get("apply_post_filters")
+    if post_filter:
+        yellow_found, person_detected, person_image_name = post_filter(
+            yellow_found, person_detected, person_image_name
+        )
+
     result["person"] = person_detected
     result["post"] = bool(yellow_found)
 

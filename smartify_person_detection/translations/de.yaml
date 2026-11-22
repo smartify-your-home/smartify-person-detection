@@ -212,3 +212,27 @@ configuration:
   person_announce_text:
     name: Ansagetext Person
     description: 'Text, der bei einer erkannten Person (ohne Post-Treffer) angesagt wird. Leer = keine Ansage. Standard: leer'
+  post_schedule_enabled:
+    name: Post nur zu Zustellzeiten
+    description: 'Gelb-Treffer nur an den gewählten Tagen/Uhrzeiten als Post werten, sonst als normale Person. Standard: aus'
+  post_days:
+    name: Zustelltage
+    description: 'Kommagetrennt: mo,di,mi,do,fr,sa,so (auch mon..sun). Standard: mo,di,mi,do,fr,sa'
+  post_time_start:
+    name: Zustellung ab
+    description: 'Beginn des Zustellfensters im Format HH:MM. Standard: 07:00'
+  post_time_end:
+    name: Zustellung bis
+    description: 'Ende des Zustellfensters im Format HH:MM. Standard: 17:00'
+  post_workday_entity:
+    name: Arbeitstag-Sensor (optional)
+    description: 'Z. B. binary_sensor.workday_sensor. Ist er off (Feiertag), wird kein Post-Treffer gemeldet. Leer = nicht verwendet.'
+  post_require_vehicle:
+    name: Post nur nach Fahrzeug
+    description: 'Gelb-Treffer nur als Post werten, wenn kurz davor ein Fahrzeug erkannt wurde. Standard: aus'
+  post_vehicle_entities:
+    name: Fahrzeug-Sensoren
+    description: 'Kommagetrennte Entities, z. B. binary_sensor.front_door_fahrzeug.'
+  post_vehicle_window_seconds:
+    name: Fahrzeug-Zeitfenster (s)
+    description: 'Wie lange ein Fahrzeug zurückliegen darf. Standard: 180'
