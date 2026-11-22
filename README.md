@@ -141,7 +141,7 @@ Die normale Ingress-Hauptseite bleibt ausschließlich für Kamerabild, Personen-
 
 ## Version
 
-Aktuell: **1.6.24**
+Aktuell: **1.7.0**
 
 ### 1.6.19 – Snapshot-Diagnose
 
@@ -186,6 +186,23 @@ Die Home-Assistant-App verwendet im Container den schreibbaren Mount `/homeassis
 Die beiden frei konfigurierbaren **Linux-Verzeichnisse** sind somit `image_dir` und `snapshot_dir`. Ab 1.6.22 werden äußere Leerzeichen entfernt; leere oder relative Angaben werden abgewiesen. Bei einem ungültigen Mount bricht die Anwendung kontrolliert ab, statt in ein flüchtiges Verzeichnis zu schreiben.
 
 **Release-Dokumentation:** Der Root-Changelog `CHANGELOG.md`, der für die App-Anzeige gespiegelte `smartify_person_detection/CHANGELOG.md` und `RELEASE_NOTES.md` halten Änderungen und Upgrade-Hinweise fest. Verbindliche Agent-Regeln: `AGENTS.md`.
+
+## Post-Filter: Zustellzeit und Fahrzeug (ab 1.7.0)
+
+Ein gelbes Oberteil allein reicht nicht immer (z. B. gelbe Daunenjacke am Sonntag). Zwei **optionale** Filter, beide standardmäßig aus. Greift ein Filter, wird der Treffer **nicht als Post**, sondern als **normale Person** gemeldet (Person-Sensor, Person-Ton/-Ansage; kein Post-Sensor, keine Post-Ansage).
+
+**Zustellzeit**
+- `post_schedule_enabled` – Filter aktivieren (Standard: aus)
+- `post_days` – Zustelltage, kommagetrennt `mo,di,mi,do,fr,sa,so` (auch `mon..sun`). Standard: `mo,di,mi,do,fr,sa`
+- `post_time_start` / `post_time_end` – Zustellfenster `HH:MM`. Standard: `07:00`–`17:00`
+- `post_workday_entity` – optional, z. B. `binary_sensor.workday_sensor`. Ist er `off` (Feiertag), keine Post. Für Samstagszustellung im Workday-Sensor Samstag als Arbeitstag eintragen.
+
+**Fahrzeug**
+- `post_require_vehicle` – Filter aktivieren (Standard: aus)
+- `post_vehicle_entities` – kommagetrennt, z. B. `binary_sensor.front_door_fahrzeug`
+- `post_vehicle_window_seconds` – Fahrzeug muss aktuell `on` sein oder höchstens so viele Sekunden zuvor `off` geworden sein. Standard: `180`
+
+Ist ein Sensor über die HA-API nicht abfragbar, wird der jeweilige Filter ignoriert (fail-open), damit keine echte Post verloren geht. Ein Sensor im Zustand `unavailable` zählt nicht als Fahrzeug. Im Protokoll erscheint bei einer Herabstufung `POST-FILTER: … nicht als Post gewertet (<Grund>)`.
 
 ## Version 1.6.24 – Folge-Trigger im RTSP-Modus
 

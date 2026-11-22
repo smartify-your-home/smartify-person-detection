@@ -212,3 +212,27 @@ configuration:
   person_announce_text:
     name: Person announcement text
     description: 'Text announced when a person (without post match) is detected. Empty = no announcement. Default: empty'
+  post_schedule_enabled:
+    name: Post only during delivery times
+    description: 'Count yellow matches as post only on selected days/times, otherwise as a normal person. Default: off'
+  post_days:
+    name: Delivery days
+    description: 'Comma-separated: mon,tue,wed,thu,fri,sat,sun (German mo..so also accepted). Default: mo,di,mi,do,fr,sa'
+  post_time_start:
+    name: Delivery from
+    description: 'Start of the delivery window (HH:MM). Default: 07:00'
+  post_time_end:
+    name: Delivery until
+    description: 'End of the delivery window (HH:MM). Default: 17:00'
+  post_workday_entity:
+    name: Workday sensor (optional)
+    description: 'E.g. binary_sensor.workday_sensor. If off (holiday), no post is reported. Empty = unused.'
+  post_require_vehicle:
+    name: Post only after vehicle
+    description: 'Count yellow matches as post only if a vehicle was detected shortly before. Default: off'
+  post_vehicle_entities:
+    name: Vehicle sensors
+    description: 'Comma-separated entities, e.g. binary_sensor.front_door_fahrzeug.'
+  post_vehicle_window_seconds:
+    name: Vehicle time window (s)
+    description: 'How long ago the vehicle may have been detected. Default: 180'

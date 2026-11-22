@@ -118,6 +118,20 @@ SOUND_TIME_END = str(g("sound_time_end", "22:00")).strip() or "22:00"
 ANNOUNCE_SCRIPT = str(g("announce_script", "") or "").strip()
 POST_ANNOUNCE_TEXT = str(g("post_announce_text", "") or "").strip()
 PERSON_ANNOUNCE_TEXT = str(g("person_announce_text", "") or "").strip()
+
+# Optionale Post-Filter (ab 1.7.0). Beide standardmaessig aus.
+# Greift ein Filter, wird ein Gelb-Treffer NICHT als Post gemeldet,
+# sondern als normale Person (kein Post-Sensor, keine Post-Ansage).
+POST_SCHEDULE_ENABLED = bool(g("post_schedule_enabled", False))
+POST_DAYS_RAW = str(g("post_days", "mo,di,mi,do,fr,sa") or "").strip()
+POST_TIME_START_RAW = str(g("post_time_start", "07:00") or "").strip() or "07:00"
+POST_TIME_END_RAW = str(g("post_time_end", "17:00") or "").strip() or "17:00"
+POST_WORKDAY_ENTITY = str(g("post_workday_entity", "") or "").strip()
+POST_REQUIRE_VEHICLE = bool(g("post_require_vehicle", False))
+POST_VEHICLE_ENTITIES = [
+    e.strip() for e in str(g("post_vehicle_entities", "") or "").split(",") if e.strip()
+]
+POST_VEHICLE_WINDOW_SECONDS = max(10, int(g("post_vehicle_window_seconds", 180)))
 SOUND_SETTINGS_FILE = Path("/data/sound_settings.json")
 SOUND_SWITCH_STATE_FILE = Path("/data/sound_switches.json")
 SOUND_FILES_DIR = Path("/homeassistant/www")
@@ -506,6 +520,150 @@ def sound_time_allowed(settings=None, now=None):
         return start <= current < end
     # Zeitfenster ueber Mitternacht, z. B. 22:00-07:00.
     return current >= start or current < end
+
+
+# ---------------------------------------------------------
+# Optionale Post-Filter: Wochentag/Zeitfenster und Fahrzeug
+# ---------------------------------------------------------
+
+_WEEKDAY_ALIASES = {
+    "mo": 0, "mon": 0, "montag": 0, "monday": 0,
+    "di": 1, "tue": 1, "dienstag": 1, "tuesday": 1,
+    "mi": 2, "wed": 2, "mittwoch": 2, "wednesday": 2,
+    "do": 3, "thu": 3, "donnerstag": 3, "thursday": 3,
+    "fr": 4, "fri": 4, "freitag": 4, "friday": 4,
+    "sa": 5, "sat": 5, "samstag": 5, "saturday": 5,
+    "so": 6, "sun": 6, "sonntag": 6, "sunday": 6,
+}
+
+
+def _parse_post_days(raw):
+    days = set()
+    for token in str(raw or "").replace(";", ",").replace(" ", ",").split(","):
+        token = token.strip().lower()
+        if not token:
+            continue
+        if token in _WEEKDAY_ALIASES:
+            days.add(_WEEKDAY_ALIASES[token])
+        else:
+            print(f"Post-Filter: unbekannter Wochentag '{token}' ignoriert.")
+    if not days:
+        # Leere/ungueltige Angabe darf die Post-Erkennung nicht komplett
+        # abschalten -> alle Tage erlauben.
+        print("Post-Filter: keine gueltigen Wochentage, alle Tage erlaubt.")
+        days = set(range(7))
+    return days
+
+
+POST_DAYS = _parse_post_days(POST_DAYS_RAW)
+POST_TIME_START = _valid_hhmm(POST_TIME_START_RAW, "07:00")
+POST_TIME_END = _valid_hhmm(POST_TIME_END_RAW, "17:00")
+
+
+def _time_in_window(start_hhmm, end_hhmm, now):
+    start = _minutes_since_midnight(start_hhmm)
+    end = _minutes_since_midnight(end_hhmm)
+    current = now.hour * 60 + now.minute
+    if start == end:
+        return True
+    if start < end:
+        return start <= current < end
+    return current >= start or current < end
+
+
+def _ha_entity_state(entity):
+    return _ha_api_request(f"/states/{quote(entity, safe='._-')}", timeout=5) or {}
+
+
+def _post_schedule_check(now):
+    if not POST_SCHEDULE_ENABLED:
+        return True, ""
+    if now.weekday() not in POST_DAYS:
+        return False, "kein Zustelltag"
+    if not _time_in_window(POST_TIME_START, POST_TIME_END, now):
+        return False, f"ausserhalb {POST_TIME_START}-{POST_TIME_END}"
+    if POST_WORKDAY_ENTITY:
+        try:
+            state = str(_ha_entity_state(POST_WORKDAY_ENTITY).get("state", "")).lower()
+        except Exception as exc:
+            # Fail-open: ein HA-Fehler darf keine echte Post verschlucken.
+            print(f"Post-Filter: {POST_WORKDAY_ENTITY} nicht abfragbar ({exc}); Filter ignoriert.")
+            return True, ""
+        if state == "off":
+            return False, f"{POST_WORKDAY_ENTITY} ist off (Feiertag/kein Arbeitstag)"
+    return True, ""
+
+
+def _post_vehicle_check(now):
+    if not POST_REQUIRE_VEHICLE:
+        return True, ""
+    if not POST_VEHICLE_ENTITIES:
+        print("Post-Filter: post_require_vehicle aktiv, aber keine post_vehicle_entities; Filter ignoriert.")
+        return True, ""
+    errors = 0
+    for entity in POST_VEHICLE_ENTITIES:
+        try:
+            data = _ha_entity_state(entity)
+        except Exception as exc:
+            errors += 1
+            print(f"Post-Filter: {entity} nicht abfragbar ({exc}).")
+            continue
+        state = str(data.get("state", "")).lower()
+        if state == "on":
+            return True, ""
+        if state == "off":
+            # last_changed eines OFF-Sensors = Zeitpunkt, bis zu dem er ON war.
+            try:
+                changed = datetime.fromisoformat(str(data.get("last_changed", "")))
+            except Exception:
+                continue
+            if changed.tzinfo is None:
+                changed = changed.replace(tzinfo=timezone.utc)
+            if (now - changed).total_seconds() <= POST_VEHICLE_WINDOW_SECONDS:
+                return True, ""
+    if errors == len(POST_VEHICLE_ENTITIES):
+        # Fail-open, wenn kein Fahrzeug-Sensor abfragbar war.
+        return True, ""
+    return False, f"kein Fahrzeug in den letzten {POST_VEHICLE_WINDOW_SECONDS}s"
+
+
+def post_allowed(now=None):
+    """(erlaubt, Grund). Ohne aktive Filter immer erlaubt."""
+    now = now or datetime.now().astimezone()
+    for check in (_post_schedule_check, _post_vehicle_check):
+        ok, reason = check(now)
+        if not ok:
+            return False, reason
+    return True, ""
+
+
+def apply_post_filters(yellow_found, person_detected, person_image_name):
+    """Gelb-Treffer bei aktivem Filter zur normalen Person herabstufen."""
+    if not yellow_found:
+        return yellow_found, person_detected, person_image_name
+    ok, reason = post_allowed()
+    if ok:
+        return yellow_found, person_detected, person_image_name
+    print(
+        f"POST-FILTER: {yellow_found[0]} nicht als Post gewertet ({reason}); "
+        f"wird als Person gemeldet."
+    )
+    return None, True, person_image_name or yellow_found[0]
+
+
+if POST_SCHEDULE_ENABLED:
+    _day_names = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+    print(
+        "Post-Filter Zustellzeit aktiv: "
+        + ",".join(_day_names[d] for d in sorted(POST_DAYS))
+        + f" {POST_TIME_START}-{POST_TIME_END}"
+        + (f", Arbeitstag-Sensor {POST_WORKDAY_ENTITY}" if POST_WORKDAY_ENTITY else "")
+    )
+if POST_REQUIRE_VEHICLE:
+    print(
+        f"Post-Filter Fahrzeug aktiv: {', '.join(POST_VEHICLE_ENTITIES) or '(keine Entity!)'}, "
+        f"Fenster {POST_VEHICLE_WINDOW_SECONDS}s"
+    )
 
 
 def _sound_switch_topic(kind):
@@ -4497,6 +4655,10 @@ def process_batch(batch, partial=False):
                 person_image_name = p.name
         if yellow_ok and yellow_found is None:
             yellow_found = (p.name, q)
+
+    yellow_found, person_detected, person_image_name = apply_post_filters(
+        yellow_found, person_detected, person_image_name
+    )
 
     if person_detected:
         print("PERSON ERKANNT:", person_image_name)

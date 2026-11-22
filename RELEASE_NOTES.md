@@ -2,6 +2,22 @@
 
 Die folgenden Hinweise beschreiben die Änderungen im Quellcode. Ein Eintrag hier **beweist nicht**, dass ein GitHub-Tag, GitHub-Release oder ein installiertes Supervisor-Image bereits existiert. Diese Zustände sind vor einer Veröffentlichung separat zu prüfen.
 
+## v1.7.0 – Optionale Post-Filter gegen Fehlalarme (2026-11-22)
+
+**Neu:** Zwei optionale Filter, damit gelb gekleidete Besucher nicht als Post gemeldet werden:
+- **Zustellzeit:** nur an gewählten Tagen (Standard Mo–Sa) im Zeitfenster (Standard 07:00–17:00), optional nicht an Feiertagen über einen Arbeitstag-Sensor.
+- **Fahrzeug:** nur wenn kurz davor (Standard 180 s) ein Fahrzeug-Sensor ausgelöst hat.
+
+Greift ein Filter, wird die Person trotzdem als **Person** gemeldet – nur die Post-Meldung entfällt.
+
+**Unverändert:** Ohne Aktivierung verhält sich die App wie 1.6.24.
+
+**Aktualisierung:** Home Assistant → Einstellungen → Apps → App Store → Smartify Person Detection aktualisieren, danach in der Konfiguration `post_schedule_enabled` und/oder `post_require_vehicle` aktivieren und die App neu starten.
+
+**Prüfstatus:** `tests/test_post_filters.py` (inkl. Praxisfall Sonntag 11:12) und `tests/test_rtsp_followup_trigger.py` bestanden; Python kompiliert, YAML/Schema geprüft. **Nicht** in einer laufenden HA-Instanz Ende-zu-Ende geprüft.
+
+**Veröffentlichungsstatus:** Versionsangabe im Repository ist kein GitHub-Tag/Release.
+
 ## v1.6.24 – Post wird auch erkannt, wenn zuerst das Fahrzeug auslöst (2026-11-12)
 
 **Behoben:** Fährt das Postauto vor, löst meist zuerst der Fahrzeug-Sensor aus. Bisher war die Erkennung danach gesperrt, bis alle Trigger 10 s OFF waren – der Zusteller, der erst einige Sekunden später ausstieg, wurde nie ausgewertet. Jetzt löst ein anderer Trigger-Sensor, der während der Sperre erstmals ON ist, ein Folge-Ereignis aus.

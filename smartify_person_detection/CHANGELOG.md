@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.7.0 – 2026-11-22 – Optionale Post-Filter (Zustellzeit, Fahrzeug)
+
+- **Neu:** `post_schedule_enabled`, `post_days`, `post_time_start`, `post_time_end`, `post_workday_entity` – Gelb-Treffer nur an Zustelltagen im Zeitfenster (optional nicht an Feiertagen laut Arbeitstag-Sensor) als Post werten.
+- **Neu:** `post_require_vehicle`, `post_vehicle_entities`, `post_vehicle_window_seconds` – Gelb-Treffer nur als Post werten, wenn ein Fahrzeug-Sensor aktuell `on` ist oder innerhalb des Fensters `off` wurde.
+- **Verhalten:** Greift ein Filter, wird der Treffer als normale Person gemeldet (kein Post-Sensor, keine Post-Ansage, Person-Ton/-Ansage wie gewohnt). Gilt im Ordner- und RTSP-Modus. Nicht abfragbare Sensoren → Filter wird ignoriert (fail-open).
+- **Anlass:** Praxisfall 22.11.2026 (Sonntag, 11:12): Person mit gelber Daunenjacke wurde als Post gemeldet.
+- **Unverändert:** Standardmäßig beide Filter aus → Verhalten identisch zu 1.6.24. YOLO/Gelb-Schwellen, RTSP-Folge-Trigger, MQTT, Snapshots, Sound, Kalibrierung.
+- **Tests:** Neuer Test `tests/test_post_filters.py`; `tests/test_rtsp_followup_trigger.py` weiterhin grün.
+- **Migration:** keine; neue Optionen erscheinen nach dem Update in der App-Konfiguration.
+- **Bekannte Einschränkung:** Nicht in einer laufenden HA-Instanz Ende-zu-Ende geprüft.
+
 ## 1.6.24 – 2026-11-12 – Folge-Trigger während der RTSP-Sperrphase
 
 - **Behoben:** Löste zuerst der Fahrzeug-Sensor aus (Postauto fährt vor) und stieg der Zusteller erst danach aus, wurde der Personen-Trigger wegen der Sperrphase (`rtsp_rearm_off_seconds`) ignoriert. Die Person war in keinem ausgewerteten Frame, „Post“ wurde nicht erkannt (Praxisfall 12.11.2026, 08:07).
